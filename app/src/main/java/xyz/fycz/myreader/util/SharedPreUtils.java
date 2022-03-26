@@ -13,25 +13,17 @@ import java.util.Map;
 
 public class SharedPreUtils {
     public static final String SHARED_NAME = "FYReader_pref";
-    public static final String AD_SHARED_NAME = "FYReader_ad_pref";
     private static SharedPreUtils sInstance;
-    private final SharedPreferences[] sharedReadables;
     private SharedPreferences sharedReadable;
     private SharedPreferences.Editor sharedWritable;
 
     private SharedPreUtils() {
-        sharedReadables = new SharedPreferences[]{
-                App.getmContext().getSharedPreferences(SHARED_NAME, Context.MODE_MULTI_PROCESS),
-                App.getmContext().getSharedPreferences(AD_SHARED_NAME, Context.MODE_MULTI_PROCESS)
-        };
+        sharedReadable = App.getmContext()
+                .getSharedPreferences(SHARED_NAME, Context.MODE_MULTI_PROCESS);
+        sharedWritable = sharedReadable.edit();
     }
-
-    //不能
+    
     public static SharedPreUtils getInstance() {
-        return getInstance(false);
-    }
-
-    public static SharedPreUtils getInstance(boolean ad) {
         if (sInstance == null) {
             synchronized (SharedPreUtils.class) {
                 if (sInstance == null) {
@@ -39,8 +31,6 @@ public class SharedPreUtils {
                 }
             }
         }
-        sInstance.sharedReadable = sInstance.sharedReadables[!ad ? 0 : 1];
-        sInstance.sharedWritable = sInstance.sharedReadable.edit();
         return sInstance;
     }
 
@@ -122,3 +112,4 @@ public class SharedPreUtils {
     }
 
 }
+
