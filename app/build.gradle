@@ -25,7 +25,7 @@ def releaseTime() {
     return new Date().format("yy.MMddHH", TimeZone.getTimeZone("GMT+08:00"))
 }
 
-def commitId = 'git rev-parse --short HEAD'.execute().text.trim()
+def commitId = '1'
 
 def getVersionC() {
     def versionCodeFile = file('version_code.properties')

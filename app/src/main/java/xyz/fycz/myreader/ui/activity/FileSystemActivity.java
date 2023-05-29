@@ -80,14 +80,14 @@ public class FileSystemActivity extends BaseTabActivity<ActivityFileSystemBindin
 
     @Override
     protected List<Fragment> createTabFragments() {
-        mLocalFragment = new LocalBookFragment();
         mCategoryFragment = new FileCategoryFragment();
-        return Arrays.asList(mLocalFragment, mCategoryFragment);
+        mLocalFragment = new LocalBookFragment();
+        return Arrays.asList(mCategoryFragment,mLocalFragment);
     }
 
     @Override
     protected List<String> createTabTitles() {
-        return Arrays.asList("智能导入", "手机目录");
+        return Arrays.asList("手机目录","智能导入");
     }
 
     @Override
@@ -151,6 +151,7 @@ public class FileSystemActivity extends BaseTabActivity<ActivityFileSystemBindin
                     changeCheckedAllStatus();
                     //提示加入书架成功
                     ToastUtils.showSuccess(getResources().getString(R.string.file_add_succeed, books.size()));
+                    finish();
 
                 }
         );
@@ -179,7 +180,7 @@ public class FileSystemActivity extends BaseTabActivity<ActivityFileSystemBindin
     @Override
     protected void processLogic() {
         super.processLogic();
-        mCurFragment = mLocalFragment;
+        mCurFragment = mCategoryFragment;
     }
 
 

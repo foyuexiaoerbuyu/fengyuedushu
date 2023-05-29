@@ -31,6 +31,10 @@ import java.util.Map;
 
 public class SharedPreUtils {
     public static final String SHARED_NAME = "FYReader_pref";
+    /**
+     * 常用文件夹
+     */
+    public static final String KEY_NAME_COMMON_USED_DIR = "common_used_dir";
     private static SharedPreUtils sInstance;
     private SharedPreferences sharedReadable;
     private SharedPreferences.Editor sharedWritable;
@@ -40,7 +44,7 @@ public class SharedPreUtils {
                 .getSharedPreferences(SHARED_NAME, Context.MODE_MULTI_PROCESS);
         sharedWritable = sharedReadable.edit();
     }
-    
+
     public static SharedPreUtils getInstance() {
         if (sInstance == null) {
             synchronized (SharedPreUtils.class) {

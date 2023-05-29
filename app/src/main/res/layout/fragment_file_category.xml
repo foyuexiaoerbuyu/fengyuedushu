@@ -24,6 +24,7 @@
 	android:layout_height="match_parent">
 	<!--path-->
 	<LinearLayout
+		android:id="@+id/file_category_ll_top_path"
 		android:layout_width="match_parent"
 		android:layout_height="35dp"
 		android:orientation="horizontal">

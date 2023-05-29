@@ -28,8 +28,11 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
+import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -56,6 +59,7 @@ import xyz.fycz.myreader.entity.SharedBook;
 import xyz.fycz.myreader.greendao.entity.Book;
 import xyz.fycz.myreader.greendao.entity.BookGroup;
 import xyz.fycz.myreader.greendao.service.BookGroupService;
+import xyz.fycz.myreader.greendao.service.BookService;
 import xyz.fycz.myreader.model.sourceAnalyzer.BookSourceManager;
 import xyz.fycz.myreader.model.storage.BackupRestoreUi;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
@@ -72,6 +76,9 @@ import xyz.fycz.myreader.webapi.LanZouApi;
 import xyz.fycz.myreader.widget.NoScrollViewPager;
 
 import static androidx.fragment.app.FragmentPagerAdapter.BEHAVIOR_RESUME_ONLY_CURRENT_FRAGMENT;
+
+import com.hjq.permissions.OnPermissionCallback;
+import com.hjq.permissions.XXPermissions;
 
 /**
  * @author fengyue
@@ -160,8 +167,28 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
     @Override
     protected void initClick() {
         super.initClick();
+        binding.mainAdd.setOnClickListener(v -> {
+            // 一键添加
+            String commPath = SharedPreUtils.getInstance().getString(SharedPreUtils.KEY_NAME_COMMON_USED_DIR, null);
+            if (!commPath.endsWith("/emulated/0")) {
+                BookService.getInstance().saveBooksByPath(commPath);
+                mBookcaseFragment.getmBookcasePresenter().getData();
+            }
+            binding.mainBtmLl.setVisibility(View.GONE);
+        });
+        binding.mainClear.setOnClickListener(v -> {
+            // 一键清空
+            mBookcaseFragment.getmBookcasePresenter().clearAllBooks();
+            binding.mainBtmLl.setVisibility(View.GONE);
+        });
+        binding.mainOpenLocal.setOnClickListener(v -> {
+            // 一键直达
+            addLocalBook();
+            binding.mainBtmLl.setVisibility(View.GONE);
+        });
 
         mToolbar.setOnLongClickListener(v -> {
+            //长按进入私密书架
             if (binding.viewPagerMain.getCurrentItem() == 0
                     && (mBookcaseFragment.getmBookcasePresenter() != null
                     && !mBookcaseFragment.getmBookcasePresenter().ismEditState())) {
@@ -174,14 +201,48 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
             }
             return false;
         });
-
+        for (int i = 0; i < binding.bottomNavigationView.getChildCount(); i++) {
+            View child = binding.bottomNavigationView.getChildAt(i);
+            if (child instanceof ViewGroup) {
+                ViewGroup viewGroup = (ViewGroup) child;
+                for (int j = 0; j < viewGroup.getChildCount(); j++) {
+                    View itemView = viewGroup.getChildAt(j);
+                    itemView.setOnLongClickListener(new View.OnLongClickListener() {
+                        @Override
+                        public boolean onLongClick(View view) {
+                            // 获取长按的item的id
+                            int itemId = view.getId();
+                            if (itemId == R.id.menu_bookshelf) {
+                                //长按进入私密书架
+                                if (binding.viewPagerMain.getCurrentItem() == 0
+                                        && (mBookcaseFragment.getmBookcasePresenter() != null
+                                        && !mBookcaseFragment.getmBookcasePresenter().ismEditState())) {
+                                    if (BookGroupService.getInstance().curGroupIsPrivate()) {
+                                        goBackNormalBookcase();
+                                    } else {
+                                        goPrivateBookcase();
+                                    }
+                                    return true;
+                                }
+                            }
+                            return true;
+                        }
+                    });
+                }
+            }
+        }
         //BottomNavigationView 点击事件监听
         binding.bottomNavigationView.setOnNavigationItemSelectedListener(menuItem -> {
             int menuId = menuItem.getItemId();
             // 跳转指定页面：Fragment
             switch (menuId) {
                 case R.id.menu_bookshelf:
-                    binding.viewPagerMain.setCurrentItem(0);
+                    if (binding.viewPagerMain.getCurrentItem() != 0) {
+                        binding.viewPagerMain.setCurrentItem(0);
+                    } else {
+                        LinearLayout tools = (LinearLayout) findViewById(R.id.main_btm_ll);
+                        tools.setVisibility(tools.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+                    }
                     break;
                 case R.id.menu_find_book:
                     binding.viewPagerMain.setCurrentItem(1);
@@ -561,5 +622,23 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
 
     public interface OnGroupChangeListener {
         void onChange();
+
+    }
+
+    private void addLocalBook() {
+        XXPermissions.with(this)
+                .permission(APPCONST.STORAGE_PERMISSIONS)
+                .request(new OnPermissionCallback() {
+                    @Override
+                    public void onGranted(List<String> permissions, boolean all) {
+                        Intent fileSystemIntent = new Intent(MainActivity.this, FileSystemActivity.class);
+                        MainActivity.this.startActivity(fileSystemIntent);
+                    }
+
+                    @Override
+                    public void onDenied(List<String> permissions, boolean never) {
+                        ToastUtils.showWarring("储存权限被拒绝，无法添加本地书籍！");
+                    }
+                });
     }
 }

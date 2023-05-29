@@ -1096,6 +1096,20 @@ public class BookcasePresenter implements BasePresenter {
         }
     }
 
+    public void clearAllBooks() {
+        DialogCreator.createCommonDialog(mMainActivity, "删除书籍",
+                "确定要删除这些书籍吗？", true, (dialog, which) -> {
+//                    for (Book book : mBookcaseAdapter.getSelectBooks()) {
+//                        mBookService.deleteBook(book);
+//                    }
+                    mBookService.deleteAllBooks();
+                    ToastUtils.showSuccess("书籍删除成功！");
+                    init();
+                    if (mBookcaseAdapter != null) {
+                        mBookcaseAdapter.setCheckedAll(false);
+                    }
+                }, null);
+    }
     /*****************************添加网址************************************/
 
 }
