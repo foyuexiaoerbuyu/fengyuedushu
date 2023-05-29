@@ -2,24 +2,21 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/FYReader.iml" filepath="$PROJECT_DIR$/.idea/modules/FYReader.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.androidTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.main.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader.DialogX.unitTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader.app.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader.app.androidTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader.app.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader.app.unitTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.androidTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.main.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader.dynamic.unitTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/FYReader.plugin.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/FYReader.plugin.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/user/FYReader.user.iml" filepath="$PROJECT_DIR$/.idea/modules/user/FYReader.user.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/user/FYReader.user.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/user/FYReader.user.androidTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/user/FYReader.user.main.iml" filepath="$PROJECT_DIR$/.idea/modules/user/FYReader.user.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/user/FYReader.user.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/user/FYReader.user.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/FYReader_new.iml" filepath="$PROJECT_DIR$/.idea/modules/FYReader_new.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.main.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/DialogX/FYReader_new.DialogX.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/FYReader_new.app.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.main.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/dynamic/FYReader_new.dynamic.unitTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/plugin/FYReader_new.plugin.iml" filepath="$PROJECT_DIR$/.idea/modules/plugin/FYReader_new.plugin.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/user/FYReader_new.user.iml" filepath="$PROJECT_DIR$/.idea/modules/user/FYReader_new.user.iml" />
     </modules>
   </component>
 </project>

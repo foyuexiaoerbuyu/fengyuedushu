@@ -21,13 +21,16 @@ package xyz.fycz.myreader.greendao.service;
 import android.database.Cursor;
 
 import android.text.TextUtils;
+
 import net.ricecode.similarity.JaroWinklerStrategy;
 import net.ricecode.similarity.StringSimilarityService;
 import net.ricecode.similarity.StringSimilarityServiceImpl;
+
 import xyz.fycz.myreader.R;
 import xyz.fycz.myreader.application.App;
 import xyz.fycz.myreader.application.SysManager;
 import xyz.fycz.myreader.common.APPCONST;
+import xyz.fycz.myreader.enums.LocalBookSource;
 import xyz.fycz.myreader.greendao.entity.Chapter;
 import xyz.fycz.myreader.greendao.gen.BookDao;
 import xyz.fycz.myreader.util.*;
@@ -37,6 +40,7 @@ import xyz.fycz.myreader.util.help.StringHelper;
 import xyz.fycz.myreader.util.utils.FileUtils;
 import xyz.fycz.myreader.util.utils.StringUtils;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -101,8 +105,9 @@ public class BookService extends BaseService {
         List<Book> oldBooks = getAllBooks();
         List<Book> newBooks = new ArrayList<>();
         String privateGroupId = SharedPreUtils.getInstance().getString("privateGroupId");
-        for (Book book : oldBooks){
-            if (StringHelper.isEmpty(book.getGroupId()) || !privateGroupId.equals(book.getGroupId())) newBooks.add(book);
+        for (Book book : oldBooks) {
+            if (StringHelper.isEmpty(book.getGroupId()) || !privateGroupId.equals(book.getGroupId()))
+                newBooks.add(book);
         }
         return newBooks;
     }
@@ -113,7 +118,7 @@ public class BookService extends BaseService {
      * @return
      */
     public List<Book> getGroupBooks(String groupId) {
-        if (StringHelper.isEmpty(groupId)){
+        if (StringHelper.isEmpty(groupId)) {
             return getAllBooksNoHide();
         }
         return DbManager.getInstance().getSession().getBookDao()
@@ -225,7 +230,8 @@ public class BookService extends BaseService {
             mChapterService.deleteBookALLChapterById(book.getId());
             mBookMarkService.deleteBookALLBookMarkById(book.getId());
             DbManager.getDaoSession().getSearchWordDao().deleteByKey(book.getId());
-        }catch (Exception ignored){}
+        } catch (Exception ignored) {
+        }
     }
 
     /**
@@ -290,9 +296,10 @@ public class BookService extends BaseService {
     /**
      * 删除所有章节缓存
      */
-    public void deleteAllBookCathe(){
+    public void deleteAllBookCathe() {
         FileUtils.deleteFile(APPCONST.BOOK_CACHE_PATH);
     }
+
     /**
      * 判断书籍是否存在
      *
@@ -346,7 +353,6 @@ public class BookService extends BaseService {
         }
         return false;
     }*/
-
     public boolean matchHistoryChapterPos(Book book, List<Chapter> mChapters) {
         float matchSui = SysManager.getSetting().getMatchChapterSuitability();
         int index = getDurChapter(book.getHisttoryChapterNum(), book.getChapterTotalNum(), book.getHistoryChapterId(), mChapters);
@@ -361,7 +367,7 @@ public class BookService extends BaseService {
         if (oldName.contains(newName) || newName.contains(oldName) ||
                 StringUtils.levenshtein(oldName, newName) > matchSui ||
                 getChapterNum(oldName) == getChapterNum(newName) ||
-                getPureChapterName(oldName).equals(getPureChapterName(newName))){
+                getPureChapterName(oldName).equals(getPureChapterName(newName))) {
             book.setHistoryChapterId(mChapters.get(index).getTitle());
             book.setHisttoryChapterNum(index);
             updateEntity(book);
@@ -448,6 +454,34 @@ public class BookService extends BaseService {
             return StringUtils.stringToInt(matcher.group(2));
         }
         return -1;
+    }
+
+    public int saveBooksByPath(String path) {
+        File[] files = new File(path).listFiles();
+        int addBooksSize = 0;
+        if (files != null && files.length > 0) {
+            List<Book> books = new ArrayList<>();
+            for (File file : files) {
+                //判断文件是否存在
+                if (!file.exists() || file.isDirectory() || !file.getName().endsWith("txt"))
+                    continue;
+
+                Book book = new Book();
+                book.setName(file.getName().replace(FileUtils.SUFFIX_EPUB, "").replace(FileUtils.SUFFIX_TXT, ""));
+                book.setChapterUrl(file.getAbsolutePath());
+                book.setType("本地书籍");
+                book.setHistoryChapterId("未开始阅读");
+                book.setNewestChapterTitle("未拆分章节");
+                book.setAuthor("本地书籍");
+                book.setSource(LocalBookSource.local.toString());
+                book.setDesc("无");
+                book.setIsCloseUpdate(true);
+                books.add(book);
+            }
+            addBooks(books);
+            addBooksSize = books.size();
+        }
+        return addBooksSize;
     }
 
     /**

@@ -23,8 +23,13 @@ import android.os.Environment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.LinearLayout;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
+
+import com.kongzue.dialogx.DialogX;
+import com.kongzue.dialogx.dialogs.MessageDialog;
+import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -37,10 +42,13 @@ import java.util.Map;
 import java.util.Set;
 
 import xyz.fycz.myreader.R;
+import xyz.fycz.myreader.base.adapter.BaseListAdapter;
 import xyz.fycz.myreader.databinding.FragmentFileCategoryBinding;
 import xyz.fycz.myreader.greendao.service.BookService;
 import xyz.fycz.myreader.ui.adapter.FileSystemAdapter;
 import xyz.fycz.myreader.util.FileStack;
+import xyz.fycz.myreader.util.SharedPreUtils;
+import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.utils.FileUtils;
 import xyz.fycz.myreader.widget.DividerItemDecoration;
 
@@ -79,6 +87,14 @@ public class FileCategoryFragment extends BaseFileFragment {
     @Override
     protected void initClick() {
         super.initClick();
+        binding.fileCategoryLlTopPath.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                SharedPreUtils.getInstance().putString(SharedPreUtils.KEY_NAME_COMMON_USED_DIR, Environment.getExternalStorageDirectory().getPath());
+                ToastUtils.showSuccess("已设为常用目录");
+                return true;
+            }
+        });
         mAdapter.setOnItemClickListener(
                 (view, pos) -> {
                     File file = mAdapter.getItem(pos);
@@ -108,6 +124,31 @@ public class FileCategoryFragment extends BaseFileFragment {
                     }
                 }
         );
+        mAdapter.setOnItemLongClickListener((view, pos) -> {
+            File file = mAdapter.getItem(pos);
+            if (file.isDirectory()) {
+                MessageDialog messageDialog = new MessageDialog(null, null, "设为常用目录", "一键添加")
+                        .setOkButtonClickListener(new OnDialogButtonClickListener<MessageDialog>() {
+                            @Override
+                            public boolean onClick(MessageDialog baseDialog, View v) {
+                                SharedPreUtils.getInstance().putString(SharedPreUtils.KEY_NAME_COMMON_USED_DIR, Environment.getExternalStorageDirectory().getPath());
+                                ToastUtils.showSuccess("已设为常用目录");
+                                return false;
+                            }
+                        }).setCancelButtonClickListener(new OnDialogButtonClickListener<MessageDialog>() {
+                            @Override
+                            public boolean onClick(MessageDialog baseDialog, View v) {
+                                int saveBooksSize = BookService.getInstance().saveBooksByPath(file.getPath());
+                                ToastUtils.showSuccess("已添加: " + saveBooksSize + " 本电子书");
+                                FileCategoryFragment.this.getActivity().finish();
+                                return true;
+                            }
+                        })
+                        .setButtonOrientation(LinearLayout.VERTICAL);
+                messageDialog.show();
+            }
+            return true;
+        });
 
         binding.fileCategoryTvBackLast.setOnClickListener(v -> backLast());
     }
@@ -130,6 +171,7 @@ public class FileCategoryFragment extends BaseFileFragment {
     protected void processLogic() {
         super.processLogic();
         File root = Environment.getExternalStorageDirectory();
+        root = new File(SharedPreUtils.getInstance().getString(SharedPreUtils.KEY_NAME_COMMON_USED_DIR, root.getPath()));
         toggleFileTree(root);
     }
 
