@@ -19,5 +19,3 @@
 include ':app'
 include ':DialogX'
 include ':dynamic'
-include ':user'
-include ':plugin'

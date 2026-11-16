@@ -272,9 +272,6 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
                     getSupportActionBar().setSubtitle("");
                 }
                 invalidateOptionsMenu();
-                /*if (i == 1){
-                    ((BookStoreFragment) mFragments.get(i)).lazyLoad();
-                }*/
             }
 
             @Override

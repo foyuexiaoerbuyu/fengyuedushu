@@ -188,8 +188,6 @@ dependencies {
 
     implementation 'com.google.code.gson:gson:2.9.0'
 
-    implementation 'com.journeyapps:zxing-android-embedded:3.5.0'
-
     implementation 'org.greenrobot:greendao:3.3.0'
     implementation 'com.github.yuweiguocn:GreenDaoUpgradeHelper:v2.2.1'
 
@@ -204,9 +202,6 @@ dependencies {
 
 
     implementation 'com.google.android.material:material:1.4.0'
-
-    //Scroller
-    implementation 'com.futuremind.recyclerfastscroll:fastscroll:0.2.5'
 
     //Toasty
     implementation 'com.github.GrenderG:Toasty:1.5.0'
@@ -270,27 +265,7 @@ dependencies {
     implementation('org.apache.commons:commons-text:1.9')
 
     //DDSDK
-    implementation 'tv.danmaku.ijk.media:ijkplayer-java:0.8.8'
-    implementation 'tv.danmaku.ijk.media:ijkplayer-armv7a:0.8.8'
-    implementation 'tv.danmaku.ijk.media:ijkplayer-exo:0.8.8'
-    implementation 'com.lzy.net:okgo:3.0.4'
     implementation 'com.pangle.cn:ads-sdk-pro:4.2.5.2'
-    implementation('com.facebook.fresco:fresco:0.12.0') {
-        exclude module: 'support-v4'
-        exclude group: 'com.android.support'
-    }
-    implementation('com.facebook.fresco:animated-gif:0.12.0') {
-        exclude module: 'support-v4'
-        exclude group: 'com.android.support'
-    }
-    implementation('com.facebook.fresco:animated-webp:0.12.0') {
-        exclude module: 'support-v4'
-        exclude group: 'com.android.support'
-    }
-    implementation('com.facebook.fresco:webpsupport:0.12.0') {
-        exclude module: 'support-v4'
-        exclude group: 'com.android.support'
-    }
 
     //https://github.com/fengyuecanzhu/Maple
     implementation("me.fycz.maple:maple:1.9")
