@@ -68,22 +68,18 @@ import xyz.fycz.myreader.model.user.Result;
 import xyz.fycz.myreader.model.user.User;
 import xyz.fycz.myreader.model.user.UserService;
 import xyz.fycz.myreader.ui.activity.AboutActivity;
-import xyz.fycz.myreader.ui.activity.AdSettingActivity;
 import xyz.fycz.myreader.ui.activity.BookSourceActivity;
 import xyz.fycz.myreader.ui.activity.DonateActivity;
 import xyz.fycz.myreader.ui.activity.LoginActivity;
 import xyz.fycz.myreader.ui.activity.MainActivity;
 import xyz.fycz.myreader.ui.activity.MoreSettingActivity;
 import xyz.fycz.myreader.ui.activity.ReadRecordActivity;
-import xyz.fycz.myreader.ui.activity.RemoveAdActivity;
 import xyz.fycz.myreader.ui.activity.UserInfoActivity;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
 import xyz.fycz.myreader.ui.dialog.LoadingDialog;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.ToastUtils;
-import xyz.fycz.myreader.util.utils.AdUtils;
 import xyz.fycz.myreader.util.utils.NetworkUtils;
-import xyz.fycz.myreader.util.utils.RxUtils;
 
 /**
  * @author fengyue
@@ -162,22 +158,6 @@ public class MineFragment extends BaseFragment {
         }
         binding.tvThemeModeSelect.setText(themeModeArr[themeMode]);
         initShowMode();
-        AdUtils.checkHasAd(true, true).compose(RxUtils::toSimpleSingle)
-                .subscribe(new MySingleObserver<Boolean>() {
-                    @Override
-                    public void onSuccess(@NonNull Boolean aBoolean) {
-                        if (aBoolean && AdUtils.getAdConfig().getRemoveAdTime() > 0){
-                            binding.mineRlRemoveAd.setVisibility(View.VISIBLE);
-                        }else {
-                            binding.mineRlRemoveAd.setVisibility(View.GONE);
-                        }
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        binding.mineRlRemoveAd.setVisibility(View.GONE);
-                    }
-                });
     }
 
     private void initShowMode() {
@@ -434,8 +414,6 @@ public class MineFragment extends BaseFragment {
                         return false;
                     }).setCancelButton(R.string.cancel);
         });
-
-        binding.mineRlRemoveAd.setOnClickListener(v -> startActivity(new Intent(getActivity(), RemoveAdActivity.class)));
 
         binding.mineRlAbout.setOnClickListener(v -> {
             Intent aboutIntent = new Intent(getActivity(), AboutActivity.class);

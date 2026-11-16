@@ -38,11 +38,9 @@ import xyz.fycz.myreader.base.LazyFragment;
 import xyz.fycz.myreader.base.adapter.BaseListAdapter;
 import xyz.fycz.myreader.base.adapter.IViewHolder;
 import xyz.fycz.myreader.base.observer.MyObserver;
-import xyz.fycz.myreader.base.observer.MySingleObserver;
 import xyz.fycz.myreader.common.APPCONST;
 import xyz.fycz.myreader.databinding.FragmentFindBook2Binding;
 import xyz.fycz.myreader.entity.FindKind;
-import xyz.fycz.myreader.entity.ad.AdBean;
 import xyz.fycz.myreader.greendao.entity.Book;
 import xyz.fycz.myreader.greendao.service.BookService;
 import xyz.fycz.myreader.ui.activity.BookDetailedActivity;
@@ -50,7 +48,6 @@ import xyz.fycz.myreader.ui.adapter.holder.FindBookHolder;
 import xyz.fycz.myreader.ui.dialog.SourceExchangeDialog;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.help.StringHelper;
-import xyz.fycz.myreader.util.utils.AdUtils;
 import xyz.fycz.myreader.util.utils.RxUtils;
 import xyz.fycz.myreader.webapi.BookApi;
 import xyz.fycz.myreader.webapi.crawler.base.FindCrawler;
@@ -69,8 +66,6 @@ public class FindBook2Fragment extends LazyFragment {
 
     private static final String KIND = "kind";
     private static final String FIND_CRAWLER = "findCrawler";
-    private AdBean adBean;
-    private View flow;
 
     public FindBook2Fragment() {
     }
@@ -113,8 +108,6 @@ public class FindBook2Fragment extends LazyFragment {
     }
 
     protected void initData() {
-        adBean = AdUtils.getAdConfig().getFind();
-        getFlow();
         findBookAdapter = new BaseListAdapter<Book>() {
             @Override
             protected IViewHolder<Book> createViewHolder(int viewType) {
@@ -125,19 +118,6 @@ public class FindBook2Fragment extends LazyFragment {
         binding.rvFindBooks.setAdapter(findBookAdapter);
         page = 1;
         loadBooks();
-    }
-
-    private void getFlow() {
-        AdUtils.checkHasAd().subscribe(new MySingleObserver<Boolean>() {
-            @Override
-            public void onSuccess(@NonNull Boolean aBoolean) {
-                if (aBoolean && AdUtils.adTime("find", adBean)) {
-                    if (adBean.getStatus() > 0) {
-                        AdUtils.getFlowAd(getActivity(), 1, view -> flow = view, "find");
-                    }
-                }
-            }
-        });
     }
 
     protected void initWidget() {
@@ -192,11 +172,6 @@ public class FindBook2Fragment extends LazyFragment {
                     } else {
                         findBookAdapter.refreshItems(books);
                         binding.srlFindBooks.finishRefresh();
-                        if (flow != null) {
-                            int index = findBookAdapter.getItemCount() - books.size() + 5;
-                            index = Math.min(findBookAdapter.getItemCount() - 1, index);
-                            findBookAdapter.addOther(index, flow);
-                        }
                     }
                 } else {
                     if (books.size() == 0) {
@@ -204,11 +179,6 @@ public class FindBook2Fragment extends LazyFragment {
                     } else {
                         findBookAdapter.addItems(books);
                         binding.srlFindBooks.finishLoadMore();
-                        if (flow != null) {
-                            int index = findBookAdapter.getItemCount() - books.size() + 5;
-                            index = Math.min(findBookAdapter.getItemCount() - 1, index);
-                            findBookAdapter.addOther(index, flow);
-                        }
                     }
                 }
                 page++;

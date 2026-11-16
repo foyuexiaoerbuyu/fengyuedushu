@@ -70,7 +70,6 @@ import xyz.fycz.myreader.ui.fragment.MineFragment;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.help.StringHelper;
 import xyz.fycz.myreader.util.ToastUtils;
-import xyz.fycz.myreader.util.utils.AdUtils;
 import xyz.fycz.myreader.util.utils.GsonExtensionsKt;
 import xyz.fycz.myreader.webapi.LanZouApi;
 import xyz.fycz.myreader.widget.NoScrollViewPager;
@@ -307,7 +306,6 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
         }
         firstInit();
         LanZouApi.INSTANCE.checkSubscribeUpdate(this);
-        AdUtils.adRecord("Usage", "usTimes");
     }
 
     private void firstInit() {

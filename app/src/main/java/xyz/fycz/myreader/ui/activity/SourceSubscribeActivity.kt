@@ -30,7 +30,6 @@ import xyz.fycz.myreader.base.BaseActivity
 import xyz.fycz.myreader.base.adapter.BaseListAdapter
 import xyz.fycz.myreader.base.adapter.IViewHolder
 import xyz.fycz.myreader.base.observer.MyObserver
-import xyz.fycz.myreader.base.observer.MySingleObserver
 import xyz.fycz.myreader.common.URLCONST
 import xyz.fycz.myreader.databinding.ActivitySourceSubscribeBinding
 import xyz.fycz.myreader.entity.lanzou.LanZouFile
@@ -43,8 +42,6 @@ import xyz.fycz.myreader.ui.dialog.DialogCreator
 import xyz.fycz.myreader.ui.dialog.LoadingDialog
 import xyz.fycz.myreader.util.SharedPreUtils
 import xyz.fycz.myreader.util.ToastUtils
-import xyz.fycz.myreader.util.utils.AdUtils
-import xyz.fycz.myreader.util.utils.AdUtils.FlowAd
 import xyz.fycz.myreader.util.utils.RxUtils
 import xyz.fycz.myreader.webapi.LanZouApi
 
@@ -176,28 +173,12 @@ class SourceSubscribeActivity : BaseActivity<ActivitySourceSubscribeBinding>() {
     }
 
     private fun preSubscribe(file: SubscribeFile, pos: Int) {
-        AdUtils.checkHasAd().subscribe(object : MySingleObserver<Boolean?>() {
-            override fun onSuccess(aBoolean: Boolean) {
-                if (aBoolean && AdUtils.getAdConfig().isSubSource) {
-                    DialogCreator.createCommonDialog(
-                        this@SourceSubscribeActivity, "订阅书源",
-                        "确定要订阅该书源吗？\n点击确定观看一段视频后即可完成订阅", true, { _, _ ->
-                            AdUtils.showRewardVideoAd(this@SourceSubscribeActivity) {
-                                ToastUtils.showSuccess("视频观看完成，正在为您订阅书源")
-                                subscribe(file, pos)
-                            }
-                        }, null
-                    )
-                } else {
-                    DialogCreator.createCommonDialog(
-                        this@SourceSubscribeActivity, "订阅书源",
-                        "确定要订阅该书源吗？\n点击确定即可完成订阅", true, { _, _ ->
-                            subscribe(file, pos)
-                        }, null
-                    )
-                }
-            }
-        })
+        DialogCreator.createCommonDialog(
+            this@SourceSubscribeActivity, "订阅书源",
+            "确定要订阅该书源吗？\n点击确定即可完成订阅", true, { _, _ ->
+                subscribe(file, pos)
+            }, null
+        )
     }
 
     private fun subscribe(file: SubscribeFile, pos: Int) {

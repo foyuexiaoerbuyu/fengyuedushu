@@ -45,9 +45,7 @@ import xyz.fycz.myreader.application.App;
 import xyz.fycz.myreader.application.CrashHandler;
 import xyz.fycz.myreader.application.SysManager;
 import xyz.fycz.myreader.entity.Setting;
-import xyz.fycz.myreader.ui.activity.SplashActivity;
 import xyz.fycz.myreader.util.StatusBarUtil;
-import xyz.fycz.myreader.util.utils.AdUtils;
 
 /**
  * @author fengyue
@@ -178,7 +176,6 @@ public abstract class BaseActivity<VB> extends SwipeBackActivity {
     @Override
     protected void onStop() {
         super.onStop();
-        AdUtils.backTime();
         ActivityManage.mResumeActivityCount--;
         if (ActivityManage.mResumeActivityCount <= 0
                 && !App.isBackground){
@@ -195,9 +192,6 @@ public abstract class BaseActivity<VB> extends SwipeBackActivity {
                 App.isBackground) {
             App.isBackground = false;
             Log.d("FYReader", "onActivityStarted: 应用进入前台");
-            if (!(this instanceof SplashActivity) && AdUtils.backSplashAd()) {
-                SplashActivity.start(this);
-            }
         }
     }
 

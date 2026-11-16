@@ -22,14 +22,11 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-
-import androidx.annotation.NonNull;
 
 import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.ObjectKey;
@@ -37,7 +34,6 @@ import com.gyf.immersionbar.ImmersionBar;
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.Permission;
 import com.hjq.permissions.XXPermissions;
-import com.weaction.ddsdk.ad.DdSdkSplashAd;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -47,17 +43,14 @@ import java.util.List;
 import xyz.fycz.myreader.R;
 import xyz.fycz.myreader.application.App;
 import xyz.fycz.myreader.base.BaseActivity;
-import xyz.fycz.myreader.base.observer.MySingleObserver;
 import xyz.fycz.myreader.common.APPCONST;
 import xyz.fycz.myreader.databinding.ActivitySplashBinding;
 import xyz.fycz.myreader.greendao.service.BookGroupService;
 import xyz.fycz.myreader.ui.dialog.MyAlertDialog;
 import xyz.fycz.myreader.util.IOUtils;
-import xyz.fycz.myreader.util.SharedPreAdUtils;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.help.DateHelper;
-import xyz.fycz.myreader.util.utils.AdUtils;
 import xyz.fycz.myreader.util.utils.ImageLoader;
 import xyz.fycz.myreader.util.utils.MD5Utils;
 import xyz.fycz.myreader.util.utils.OkHttpUtils;
@@ -68,13 +61,9 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
     public static final String TAG = SplashActivity.class.getSimpleName();
     public static int WAIT_INTERVAL = 0;
 
-    private int todayAdCount;
-    private int adTimes;
     private boolean hasStart = false;
     private boolean startToAd = false;
     private static final String INTENT_TO_AD = "startToAd";
-    private int timeOut = 5;
-    private Handler handler = new Handler();
 
     //创建子线程
     private Runnable start = () -> {
@@ -91,8 +80,6 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
             }
         }
     };
-
-    private Runnable adTimeOutRunnable = () -> adTimeout(--timeOut);
 
     public static void start(Context context) {
         Intent intent = new Intent(context, SplashActivity.class);
@@ -141,23 +128,6 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
     @Override
     protected void initData(Bundle savedInstanceState) {
         startToAd = getIntent().getBooleanExtra(INTENT_TO_AD, false);
-        String splashAdCount = SharedPreUtils.getInstance().getString("splashAdCount");
-        adTimes = SharedPreUtils.getInstance().getInt("curAdTimes", 3);
-        String[] splashAdCounts = splashAdCount.split(":");
-        String today = DateHelper.getYearMonthDay1();
-        if (today.equals(splashAdCounts[0])) {
-            todayAdCount = Integer.parseInt(splashAdCounts[1]);
-        } else {
-            todayAdCount = 0;
-        }
-    }
-
-    @Override
-    protected void initClick() {
-        binding.tvSkip.setOnClickListener(v -> {
-            WAIT_INTERVAL = 0;
-            startNormal();
-        });
     }
 
     @Override
@@ -169,39 +139,13 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
     }
 
     private void start() {
-        //startNoAd();
-        /*if (adTimes >= 0 && todayAdCount >= adTimes) {
-            startNoAd();
-        } else {*/
-            /*App.getHandler().postDelayed(() -> {
-                binding.tvSkip.setVisibility(View.VISIBLE);
-            }, 2000);*/
-        AdUtils.checkHasAd()
-                .subscribe(new MySingleObserver<Boolean>() {
-                    @Override
-                    public void onSuccess(@NonNull Boolean aBoolean) {
-                        if (aBoolean) {
-                            startWithAd();
-                            binding.ivSplash.setVisibility(View.GONE);
-                            binding.llAd.setVisibility(View.VISIBLE);
-                        } else {
-                            startNoAd();
-                        }
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        startNoAd();
-                    }
-                });
-        //}
+        startNoAd();
     }
 
     private void startNoAd() {
         Animation inAni = AnimationUtils.loadAnimation(SplashActivity.this, R.anim.fade_in);
         binding.ivSplash.setVisibility(View.VISIBLE);
         binding.ivSplash.startAnimation(inAni);
-        binding.llAd.setVisibility(View.GONE);
         WAIT_INTERVAL = 1500;
         loadImage();
         startNormal();
@@ -231,54 +175,6 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
             }
         }
     }
-
-    private void startWithAd() {
-        try {
-            new DdSdkSplashAd().show(binding.flAd, this, new DdSdkSplashAd.CountdownCallback() {
-                // 展示成功
-                @Override
-                public void show() {
-                    handler.removeCallbacks(adTimeOutRunnable);
-                    SharedPreAdUtils.getInstance().putLong("splashAdTime", System.currentTimeMillis());
-                    Log.d(TAG, "广告展示成功");
-                    AdUtils.adRecord("splash", "adShow");
-                    countTodayAd();
-                    SharedPreAdUtils.getInstance().putBoolean("adTimeOut", false);
-                }
-
-                // 广告被点击
-                @Override
-                public void click() {
-                    Log.d(TAG, "广告被点击");
-                    AdUtils.adRecord("splash", "adClick");
-                }
-
-                // 展示出错时可读取 msg 中的错误信息
-                @Override
-                public void error(String msg) {
-                    WAIT_INTERVAL = 1500;
-                    startNormal();
-                    Log.e(TAG, msg);
-                    //ToastUtils.showError(msg);
-                }
-
-                // 倒计时结束或用户主动点击跳过按钮后调用
-                @Override
-                public void finishCountdown() {
-                    Log.d(TAG, "倒计时结束或用户主动点击跳过按钮");
-                    WAIT_INTERVAL = 0;
-                    AdUtils.adRecord("splash", "adFinishCount");
-                    startNormal();
-                }
-            });
-            adTimeout(timeOut);
-        } catch (Exception e) {
-            e.printStackTrace();
-            WAIT_INTERVAL = 1500;
-            startNormal();
-        }
-    }
-
 
     private void loadImage() {
         File imgFile = getFileStreamPath(APPCONST.FILE_NAME_SPLASH_IMAGE);
@@ -373,23 +269,5 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
                         start();
                     }
                 });
-    }
-
-
-    private void countTodayAd() {
-        String today = DateHelper.getYearMonthDay1();
-        todayAdCount++;
-        SharedPreUtils.getInstance().putString("splashAdCount", today + ":" + todayAdCount);
-    }
-
-    private void adTimeout(int time) {
-        if (time == 0) {
-            WAIT_INTERVAL = 0;
-            SharedPreAdUtils.getInstance().putLong("splashAdTime", System.currentTimeMillis());
-            startNormal();
-            SharedPreAdUtils.getInstance().putBoolean("adTimeOut", true);
-        } else {
-            handler.postDelayed(adTimeOutRunnable, 1000);
-        }
     }
 }

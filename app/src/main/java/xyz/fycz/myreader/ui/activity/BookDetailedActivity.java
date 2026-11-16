@@ -38,7 +38,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.RequestBuilder;
 import com.bumptech.glide.request.RequestOptions;
-import com.weaction.ddsdk.ad.DdSdkFlowAd;
 
 import org.jetbrains.annotations.NotNull;
 
@@ -60,7 +59,6 @@ import xyz.fycz.myreader.base.observer.MyObserver;
 import xyz.fycz.myreader.base.observer.MySingleObserver;
 import xyz.fycz.myreader.common.APPCONST;
 import xyz.fycz.myreader.databinding.ActivityBookDetailBinding;
-import xyz.fycz.myreader.entity.ad.AdBean;
 import xyz.fycz.myreader.experiment.BookWCEstimate;
 import xyz.fycz.myreader.greendao.entity.Book;
 import xyz.fycz.myreader.greendao.entity.Chapter;
@@ -77,7 +75,6 @@ import xyz.fycz.myreader.ui.dialog.SourceExchangeDialog;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.help.StringHelper;
-import xyz.fycz.myreader.util.utils.AdUtils;
 import xyz.fycz.myreader.util.utils.BlurTransformation;
 import xyz.fycz.myreader.util.utils.NetworkUtils;
 import xyz.fycz.myreader.util.utils.RxUtils;
@@ -110,7 +107,6 @@ public class BookDetailedActivity extends BaseActivity<ActivityBookDetailBinding
     private List<String> tagList = new ArrayList<>();
     private Disposable chaptersDis;
     private Disposable wcDis;
-    private AdBean adBean;
 
     @SuppressLint("HandlerLeak")
     private Handler mHandler = new Handler() {
@@ -277,24 +273,6 @@ public class BookDetailedActivity extends BaseActivity<ActivityBookDetailBinding
         }
         mSourceDialog.setABooks(aBooks);
         mSourceDialog.setSourceIndex(sourceIndex);
-        adBean = AdUtils.getAdConfig().getDetail();
-        initAd();
-    }
-
-    private void initAd() {
-        AdUtils.checkHasAd().subscribe(new MySingleObserver<Boolean>() {
-            @Override
-            public void onSuccess(@NonNull Boolean aBoolean) {
-                if (aBoolean && AdUtils.adTime("detail", adBean)) {
-                    if (adBean.getStatus() == 1) {
-                        AdUtils.getFlowAd(BookDetailedActivity.this, 1,
-                                view -> binding.ic.getRoot().addView(view, 2), "detail");
-                    } else if (adBean.getStatus() == 2) {
-                        AdUtils.showInterAd(BookDetailedActivity.this, "detail");
-                    }
-                }
-            }
-        });
     }
 
 

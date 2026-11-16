@@ -22,7 +22,6 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.view.View
 import androidx.appcompat.widget.Toolbar
 import io.reactivex.Single
 import io.reactivex.SingleEmitter
@@ -121,72 +120,12 @@ class UserInfoActivity : BaseActivity<ActivityUserInfoBinding>() {
         } else {
             binding.tvLastWebBackTime.text = user?.backupTime
         }
-        if (user?.noAdTime.isNullOrEmpty()) {
-            binding.tvNoAdTime.text = "无记录"
-        } else {
-            binding.tvNoAdTime.text = user?.noAdTime
-        }
-        if (UserService.getUUID() == user?.noAdId) {
-            binding.tvNoAdDevice.text = "已绑定此设备"
-        } else {
-            binding.tvNoAdDevice.text = "点击绑定"
-        }
-    }
-
-    override fun initWidget() {
-        AdUtils.checkHasAd(true, false)
-            .subscribe(object : MySingleObserver<Boolean>() {
-                override fun onSubscribe(d: Disposable) {
-                    addDisposable(d)
-                }
-
-                override fun onSuccess(t: Boolean) {
-                    if (t) {
-                        binding.llNoAdService.visibility = View.VISIBLE
-                    } else {
-                        binding.llNoAdService.visibility = View.GONE
-                    }
-                }
-
-                override fun onError(e: Throwable) {
-                    binding.llNoAdService.visibility = View.GONE
-                }
-            })
     }
 
     override fun initClick() {
         binding.rlResetPwd.onClick {
             val intent = Intent(this, AuthEmailActivity::class.java)
             startActivityForResult(intent, APPCONST.REQUEST_RESET_PWD)
-        }
-
-        binding.rlNoAdDevice.onClick {
-            if (UserService.getUUID() != user?.noAdId) {
-                dialog.show()
-                UserService.bindId(user!!.userName)
-                    .subscribe(object : MySingleObserver<Result>() {
-                        override fun onSubscribe(d: Disposable) {
-                            addDisposable(d)
-                            dis = d
-                        }
-
-                        override fun onSuccess(t: Result) {
-                            if (t.code < 200) {
-                                user?.noAdId = UserService.getUUID()
-                                ToastUtils.showSuccess(t.result.toString())
-                                binding.tvNoAdDevice.text = "已绑定此设备"
-                            } else {
-                                ToastUtils.showError(t.result.toString())
-                            }
-                            dialog.dismiss()
-                        }
-
-                        override fun onError(e: Throwable) {
-                            ToastUtils.showError("设备绑定失败\n" + e.localizedMessage)
-                            dialog.dismiss()
-                        }
-                    })
-            }
         }
 
         binding.rlCammyEnter.onClick {

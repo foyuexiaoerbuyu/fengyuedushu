@@ -481,29 +481,13 @@
     <string name="parser">解析器</string>
     <string name="all_source">所有书源</string>
     <string name="local_source">内置书源</string>
-    <string name="ad_setting">广告设置</string>
-    <string name="splash_ad">开屏广告</string>
-    <string name="splash_ad_times">每日广告显示次数</string>
-    <string name="remove_ad_reward">免广告奖励</string>
-    <string name="remove_ad">去除广告</string>
-    <string name="cur_remove_ad_time">当前免除广告时长：%s</string>
-    <string name="remove_ad_tip">去除广告规则\n1、观看激励视频即可去除应用内所有广告(包括开屏)\n2、每次观看完成可获得%d小时的免广告时间，最多可累计%d小时\n3、每日最多有%d次获得免广告时长的机会</string>
     <string name="splash_cur_ad_times" formatted="false">当前次数:%s，今日已显示次数:%s</string>
-    <string name="ad">广告总开关</string>
-    <string name="book_detail_ad">详情页广告</string>
-    <string name="book_detail_ad_sc">详情页广告开关</string>
     <string name="support_author">支持作者</string>
     <string name="donate_author">捐赠作者</string>
     <string name="wx_zsm">微信赞赏码</string>
     <string name="donate_tip">点击打开</string>
     <string name="zfb_skm">支付宝收款码</string>
     <string name="qq_skm">QQ收款码</string>
-    <string name="ad_support">广告支持作者</string>
-    <string name="ad_support_tip">点击下列广告即可支持作者，建议在WIFI环境下点击</string>
-    <string name="flow_ad_tip">信息流广告</string>
-    <string name="rewarded_video">激励视频</string>
-    <string name="watch_rewarded_video">观看激励视频</string>
-    <string name="ad_file">广告下载/缓存</string>
     <string name="delete_ad_file">清除广告文件</string>
     <string name="cover_path">封面地址</string>
     <string name="book_desc">书籍简介</string>
@@ -512,7 +496,6 @@
     <string name="select_local_pic">选择本地图片</string>
     <string name="menu_edit">编辑书籍</string>
     <string name="skip_ad">跳过 | %ds</string>
-    <string name="inter_ad">插屏广告</string>
     <string name="inter_video">插屏视频</string>
     <string name="click_check_after_success">登录成功后请点击右上角图标进行首页访问测试</string>
     <string name="success">成功</string>
@@ -566,10 +549,7 @@
     <string name="email">邮箱</string>
     <string name="rest_pwd">重置密码</string>
     <string name="last_web_back_time">上次同步时间</string>
-    <string name="no_ad_time">免广告到期时间</string>
-    <string name="no_ad_device">免广告设备绑定</string>
     <string name="basic_service">基础服务</string>
-    <string name="no_ad_service">免广告服务</string>
     <string name="cammy_enter">兑换码输入</string>
     <string name="cammy_get_method">兑换码获取方式</string>
     <string name="cammy_tip">
@@ -606,7 +586,6 @@
     <string name="no_proxy_sources_tip">选择需要禁用代理的书源</string>
     <string name="enable_proxy">启用代理</string>
     <string name="edit">编辑</string>
-    <string name="reset_pangle">ResetPangleId</string>
 
     <string-array name="reset_screen_time">
         <item>跟随系统</item>

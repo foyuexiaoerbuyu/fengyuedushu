@@ -264,9 +264,6 @@ dependencies {
     //apache
     implementation('org.apache.commons:commons-text:1.9')
 
-    //DDSDK
-    implementation 'com.pangle.cn:ads-sdk-pro:4.2.5.2'
-
     //https://github.com/fengyuecanzhu/Maple
     implementation("me.fycz.maple:maple:1.9")
 }

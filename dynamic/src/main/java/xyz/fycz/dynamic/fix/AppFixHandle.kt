@@ -26,7 +26,6 @@ import me.fycz.maple.MapleUtils
 import me.fycz.maple.MethodHook
 import xyz.fycz.dynamic.AppLoadImpl.Companion.spu
 import xyz.fycz.myreader.ui.activity.MainActivity
-import xyz.fycz.myreader.util.utils.AdUtils
 
 /**
  * @author fengyue
@@ -55,7 +54,6 @@ interface AppFixHandle {
     fun fixResult(key: String, name: String, success: Boolean) {
         val res = if (success) "Success" else "Failed"
         if (!spu.getBoolean("$key-$name-$res", false)) {
-            AdUtils.adRecord(name, "fx$res")
             spu.edit().run {
                 putBoolean("$key-$name-$res", true)
                 apply()

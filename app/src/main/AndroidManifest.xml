@@ -21,11 +21,6 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="xyz.fycz.myreader">
 
-    <!--必要权限，解决安全风险漏洞，发送和注册广播事件需要调用带有传递权限的接口-->
-    <permission android:name="${applicationId}.openadsdk.permission.TT_PANGOLIN"
-        android:protectionLevel="signature" />
-
-    <uses-permission android:name="${applicationId}.openadsdk.permission.TT_PANGOLIN" />
     <!-- ********************************permission************************************ -->
     <!-- 读取手机状态和身份 -->
     <!--    <uses-permission android:name="android.permission.READ_PHONE_STATE"/>-->
@@ -137,7 +132,6 @@
             android:exported="true" />
         <activity android:name=".ui.activity.SourceEditActivity" />
         <activity android:name=".ui.activity.SourceDebugActivity" />
-        <activity android:name=".ui.activity.AdSettingActivity" />
         <activity android:name=".ui.activity.DonateActivity" />
         <activity android:name=".ui.activity.BookInfoEditActivity" />
         <activity android:name=".ui.activity.SourceLoginActivity" />
@@ -149,7 +143,6 @@
         <activity android:name=".ui.activity.RestartActivity" />
         <activity android:name=".ui.activity.CrashActivity" />
         <activity android:name=".ui.activity.SourceSubscribeActivity" />
-        <activity android:name=".ui.activity.RemoveAdActivity" />
         <activity android:name=".ui.activity.UserInfoActivity" />
 
         <receiver android:name=".util.notification.NotificationClickReceiver" />

@@ -64,7 +64,6 @@ import xyz.fycz.myreader.common.APPCONST;
 import xyz.fycz.myreader.databinding.ActivitySearchBookBinding;
 import xyz.fycz.myreader.entity.SearchBookBean;
 import xyz.fycz.myreader.entity.Setting;
-import xyz.fycz.myreader.entity.ad.AdBean;
 import xyz.fycz.myreader.greendao.entity.Book;
 import xyz.fycz.myreader.greendao.entity.SearchHistory;
 import xyz.fycz.myreader.greendao.entity.rule.BookSource;
@@ -79,7 +78,6 @@ import xyz.fycz.myreader.ui.dialog.MultiChoiceDialog;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.help.StringHelper;
-import xyz.fycz.myreader.util.utils.AdUtils;
 import xyz.fycz.myreader.util.utils.OkHttpUtils;
 import xyz.fycz.myreader.util.utils.RxUtils;
 import xyz.fycz.myreader.webapi.crawler.ReadCrawlerUtil;
@@ -129,7 +127,6 @@ public class SearchBookActivity extends BaseActivity<ActivitySearchBookBinding> 
     private boolean foldSuggest;
     private boolean foldHistory;
     private boolean needReGetHistory;
-    private AdBean adBean;
 
     @Override
     protected void bindView() {
@@ -312,25 +309,6 @@ public class SearchBookActivity extends BaseActivity<ActivitySearchBookBinding> 
             SharedPreUtils.getInstance().putBoolean("foldHistory", foldHistory);
         });
         initHistoryList();
-        adBean = AdUtils.getAdConfig().getSearch();
-        initAd();
-    }
-
-    private void initAd() {
-        AdUtils.checkHasAd().subscribe(new MySingleObserver<Boolean>() {
-            @Override
-            public void onSuccess(@NonNull Boolean aBoolean) {
-                if (aBoolean && AdUtils.adTime("search", adBean)) {
-                    if (adBean.getStatus() == 1) {
-                        AdUtils.getFlowAd(SearchBookActivity.this, 1, view -> {
-                            binding.getRoot().addView(view, 6);
-                        }, "search");
-                    } else if (adBean.getStatus() == 2) {
-                        AdUtils.showInterAd(SearchBookActivity.this, "search");
-                    }
-                }
-            }
-        });
     }
 
     @Override
