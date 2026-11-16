@@ -61,13 +61,10 @@ import kotlin.Unit;
 import kotlin.coroutines.Continuation;
 import kotlin.jvm.functions.Function3;
 import kotlinx.coroutines.CoroutineScope;
-import xyz.fycz.dynamic.AppParam;
-import xyz.fycz.dynamic.IAppLoader;
 import xyz.fycz.myreader.R;
 import xyz.fycz.myreader.common.APPCONST;
 import xyz.fycz.myreader.common.URLCONST;
 import xyz.fycz.myreader.entity.Setting;
-import xyz.fycz.myreader.entity.lanzou.LanZouFile;
 import xyz.fycz.myreader.model.sourceAnalyzer.BookSourceManager;
 import xyz.fycz.myreader.model.user.User;
 import xyz.fycz.myreader.model.user.UserService;
@@ -79,8 +76,6 @@ import xyz.fycz.myreader.util.help.SSLSocketClient;
 import xyz.fycz.myreader.util.help.StringHelper;
 import xyz.fycz.myreader.util.utils.NetworkUtils;
 import xyz.fycz.myreader.util.utils.OkHttpUtils;
-import xyz.fycz.myreader.util.utils.PluginUtils;
-import xyz.fycz.myreader.webapi.LanZouApi;
 
 
 public class App extends Application {
@@ -117,7 +112,6 @@ public class App extends Application {
         initNightTheme();
 //        LLog.init(APPCONST.LOG_DIR);
         initDialogX();
-        PluginUtils.INSTANCE.init();
     }
 
 

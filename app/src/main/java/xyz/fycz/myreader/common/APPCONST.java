@@ -62,9 +62,6 @@ public class APPCONST {
             + "book_cache" + File.separator;
     public static String HTML_CACHE_PATH = FileUtils.getCachePath() + File.separator
             + "html_cache" + File.separator;
-    public static String PLUGIN_DIR_PATH = App.getmContext().getFilesDir().getParent()
-            + File.separator + "plugin" + File.separator;
-
     public static long exitTime;
     public static final int exitConfirmTime = 2000;
 
