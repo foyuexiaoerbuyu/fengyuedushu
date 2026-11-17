@@ -60,6 +60,12 @@ public class OpenApiController {
         return bookService.page(query);
     }
 
+    /** 分类聚合列表，供 App 发现页生成分类 Tab */
+    @GetMapping("/categories")
+    public Map<String, Object> categories() {
+        return bookService.categories();
+    }
+
     /** 书籍详情 */
     @GetMapping("/books/{id}")
     public Book book(@PathVariable("id") String id) {

@@ -53,6 +53,12 @@ public class AdminApiController {
         this.chapterMapper = chapterMapper;
     }
 
+    /** 分类聚合，供后台分类筛选下拉使用 */
+    @GetMapping("/categories")
+    public Map<String, Object> categories() {
+        return bookService.categories();
+    }
+
     /** 概览统计 */
     @GetMapping("/stats")
     public Map<String, Object> stats() {

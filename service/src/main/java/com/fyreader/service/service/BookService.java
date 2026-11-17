@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -29,6 +31,42 @@ public class BookService {
         this.bookMapper = bookMapper;
         this.chapterMapper = chapterMapper;
         this.properties = properties;
+    }
+
+    /**
+     * 分类聚合：返回 { total: 书籍总数, items: [{category, count}] }。
+     * App 发现页据此生成「全部书籍 + 各分类」Tab，后台据此渲染分类筛选下拉。
+     */
+    public Map<String, Object> categories() {
+        List<Map<String, Object>> rows = bookMapper.selectCategoryStats();
+        List<Map<String, Object>> items = new java.util.ArrayList<>();
+        long total = 0L;
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            // H2/MySQL 对未加引号的列标签大小写处理不同，这里做一次兼容读取
+            Object category = pick(row, "category", "CATEGORY");
+            Object cnt = pick(row, "cnt", "CNT", "count", "COUNT");
+            long count = cnt instanceof Number ? ((Number) cnt).longValue() : 0L;
+            item.put("category", category == null ? "" : category.toString());
+            item.put("count", count);
+            items.add(item);
+            total += count;
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total", total);
+        result.put("items", items);
+        return result;
+    }
+
+    /** 依次尝试多个 key，取第一个非空值（兼容不同数据库的列标签大小写）。 */
+    private static Object pick(Map<String, Object> row, String... keys) {
+        for (String key : keys) {
+            Object value = row.get(key);
+            if (value != null) {
+                return value;
+            }
+        }
+        return null;
     }
 
     public PageResult<Book> page(BookQuery query) {

@@ -105,4 +105,13 @@
         WHERE id = #{bookId}
     </update>
 
+    <!-- 按分类聚合：发现页分类 Tab 与后台分类筛选用 -->
+    <select id="selectCategoryStats" resultType="java.util.LinkedHashMap">
+        SELECT category AS category, COUNT(1) AS cnt
+        FROM t_book
+        WHERE category IS NOT NULL AND category &lt;&gt; ''
+        GROUP BY category
+        ORDER BY cnt DESC, category ASC
+    </select>
+
 </mapper>

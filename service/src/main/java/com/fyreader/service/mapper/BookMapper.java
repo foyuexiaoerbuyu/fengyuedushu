@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface BookMapper {
@@ -29,4 +30,7 @@ public interface BookMapper {
     int refreshChapterStat(@Param("bookId") String bookId);
 
     List<Book> selectAll();
+
+    /** 按分类聚合书籍数量，供发现页分类 Tab 与后台分类筛选使用 */
+    List<Map<String, Object>> selectCategoryStats();
 }

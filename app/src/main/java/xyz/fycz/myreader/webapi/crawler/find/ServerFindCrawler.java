@@ -6,6 +6,9 @@
  */
 package xyz.fycz.myreader.webapi.crawler.find;
 
+import android.net.Uri;
+import android.text.TextUtils;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +19,8 @@ import xyz.fycz.myreader.entity.FindKind;
 import xyz.fycz.myreader.entity.StrResponse;
 import xyz.fycz.myreader.greendao.entity.Book;
 import xyz.fycz.myreader.webapi.crawler.base.BaseFindCrawler;
+import xyz.fycz.myreader.webapi.server.ServerApi;
+import xyz.fycz.myreader.webapi.server.ServerCategory;
 
 public class ServerFindCrawler extends BaseFindCrawler {
 
@@ -36,17 +41,29 @@ public class ServerFindCrawler extends BaseFindCrawler {
     public Observable<Boolean> initData() {
         return Observable.fromCallable(() -> {
             if (kindsMap.isEmpty()) {
-                FindKind kind = new FindKind();
-                kind.setTag(GROUP_NAME);
-                kind.setName("全部书籍");
-                // 服务端标记：BookApi.findBooks 据此分流到 ServerApi.findBooks(page)
-                kind.setUrl(APPCONST.SERVER_SOURCE_TAG);
                 List<FindKind> kinds = new ArrayList<>();
-                kinds.add(kind);
+                // 首位固定「全部书籍」，不带分类参数
+                kinds.add(buildKind("全部书籍", APPCONST.SERVER_SOURCE_TAG));
+                // 其余按服务端分类聚合生成，url 携带 category 参数
+                for (ServerCategory category : ServerApi.findCategoriesBlocking()) {
+                    String name = category.getCategory();
+                    if (TextUtils.isEmpty(name)) {
+                        continue;
+                    }
+                    kinds.add(buildKind(name, APPCONST.SERVER_SOURCE_TAG + "?category=" + Uri.encode(name)));
+                }
                 kindsMap.put(GROUP_NAME, kinds);
             }
             return true;
         });
+    }
+
+    private static FindKind buildKind(String name, String url) {
+        FindKind kind = new FindKind();
+        kind.setTag(GROUP_NAME);
+        kind.setName(name);
+        kind.setUrl(url);
+        return kind;
     }
 
     @Override

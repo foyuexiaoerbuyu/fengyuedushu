@@ -89,6 +89,22 @@ data class ServerChapter(
 )
 
 /**
+ * 分类聚合项，对应后端 /api/v1/categories 的 items 元素
+ */
+data class ServerCategory(
+        val category: String? = null,
+        val count: Long = 0
+)
+
+/**
+ * 分类聚合响应，对应后端 BookService.categories()
+ */
+data class ServerCategoryResult(
+        val total: Long = 0,
+        val items: List<ServerCategory>? = null
+)
+
+/**
  * 健康检查响应
  */
 data class ServerHealth(

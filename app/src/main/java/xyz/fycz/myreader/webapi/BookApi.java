@@ -203,7 +203,8 @@ public class BookApi {
 
     public static Observable<List<Book>> findBooks(FindKind kind, FindCrawler findCrawler, int page) {
         if (kind != null && ServerApi.isServerSource(kind.getUrl())) {
-            return ServerApi.findBooks(page);
+            // url 形如 fyreader://server?category=玄幻，无参数表示全部书籍
+            return ServerApi.findBooks(page, ServerApi.categoryOf(kind.getUrl()));
         }
         if (findCrawler instanceof ThirdFindCrawler) {
             return ThirdSourceApi.findBook(kind.getUrl(), (ThirdFindCrawler) findCrawler, page);

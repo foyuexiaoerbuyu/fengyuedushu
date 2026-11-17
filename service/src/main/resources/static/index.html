@@ -77,6 +77,9 @@
         <option value="name_asc">按书名正序</option>
         <option value="create_desc">按创建时间倒序</option>
       </select>
+      <select id="bookCategory" onchange="loadBooks(1)">
+        <option value="">全部分类</option>
+      </select>
       <button class="btn" onclick="loadBooks(1)">查询</button>
       <button class="btn primary" onclick="openBookDialog()">新增书籍</button>
     </div>
@@ -306,12 +309,30 @@ async function loadStats() {
 }
 
 /* ---------- 书籍 ---------- */
+async function loadCategories() {
+  const sel = document.getElementById('bookCategory');
+  if (!sel) return;
+  const current = sel.value;
+  try {
+    const d = await api('/api/admin/categories');
+    const items = (d && d.items) || [];
+    sel.innerHTML = '<option value="">全部分类</option>' + items.map(it =>
+      `<option value="${esc(it.category)}">${esc(it.category)}（${it.count}）</option>`).join('');
+    sel.value = items.some(it => it.category === current) ? current : '';
+  } catch (e) {
+    /* 分类加载失败不影响书籍列表 */
+  }
+}
+
 async function loadBooks(page) {
   if (page) state.bookPage = page;
   const kw = document.getElementById('bookKeyword').value.trim();
   const sort = document.getElementById('bookSort').value;
+  const categoryEl = document.getElementById('bookCategory');
+  const category = categoryEl ? categoryEl.value : '';
   const qs = new URLSearchParams({ page: state.bookPage, size: state.bookSize, sort });
   if (kw) qs.set('keyword', kw);
+  if (category) qs.set('category', category);
   try {
     const d = await api('/api/admin/books?' + qs.toString());
     state.bookTotal = d.total;
@@ -401,12 +422,12 @@ async function saveBook() {
     }
     document.getElementById('bookDialog').close();
     toast('保存成功');
-    loadBooks(); loadStats();
+    loadBooks(); loadStats(); loadCategories();
   } catch (e) { toast(e.message, true); }
 }
 
 async function refreshBook(id) {
-  try { await api('/api/admin/books/' + encodeURIComponent(id) + '/refresh', { method: 'POST' }); toast('章节统计已重算'); loadBooks(); loadStats(); }
+  try { await api('/api/admin/books/' + encodeURIComponent(id) + '/refresh', { method: 'POST' }); toast('章节统计已重算'); loadBooks(); loadStats(); loadCategories(); }
   catch (e) { toast(e.message, true); }
 }
 
@@ -415,7 +436,7 @@ async function removeBook(id, name) {
   try {
     await api('/api/admin/books/' + encodeURIComponent(id), { method: 'DELETE' });
     toast('已删除');
-    loadBooks(); loadStats();
+    loadBooks(); loadStats(); loadCategories();
   } catch (e) { toast(e.message, true); }
 }
 
@@ -504,7 +525,7 @@ async function saveChapter() {
     }
     document.getElementById('chapterDialog').close();
     toast('保存成功');
-    loadChapters(); loadBooks(); loadStats();
+    loadChapters(); loadBooks(); loadStats(); loadCategories();
   } catch (e) { toast(e.message, true); }
 }
 
@@ -513,7 +534,7 @@ async function removeChapter(id) {
   try {
     await api('/api/admin/chapters/' + encodeURIComponent(id), { method: 'DELETE' });
     toast('已删除');
-    loadChapters(); loadBooks(); loadStats();
+    loadChapters(); loadBooks(); loadStats(); loadCategories();
   } catch (e) { toast(e.message, true); }
 }
 
@@ -614,12 +635,13 @@ async function doImport() {
     box.innerHTML = `导入成功：<b>${esc(r.bookName)}</b> · 章节 ${r.chapterCount} · 字数 ${r.wordCount}<br>`
       + '前几章：' + r.chapterPreview.map(t => esc(t)).join(' / ');
     toast('导入成功');
-    loadBooks(); loadStats();
+    loadBooks(); loadStats(); loadCategories();
   } catch (e) { box.textContent = ''; toast(e.message, true); }
 }
 
 /* ---------- 启动 ---------- */
 loadStats();
+loadCategories();
 loadBooks(1);
 </script>
 </body>

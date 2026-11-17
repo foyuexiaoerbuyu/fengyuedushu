@@ -32,6 +32,7 @@ import xyz.fycz.myreader.util.help.StringHelper
 import xyz.fycz.myreader.util.utils.OkHttpUtils
 import java.io.IOException
 import java.lang.reflect.Type
+import java.net.URLDecoder
 import java.net.URLEncoder
 
 /**
@@ -55,12 +56,16 @@ object ServerApi {
     /** 服务端章节主键前缀（fycz-service 生成形如 `c_xxx` 的字符串主键）。 */
     private const val SERVER_CHAPTER_ID_PREFIX = "c_"
 
+    /** 发现页分类 url 中携带分类名的查询参数前缀。 */
+    private const val CATEGORY_QUERY_PREFIX = "?category="
+
     private val gson = Gson()
 
     private val typeBookPage = object : TypeToken<ServerResult<ServerPage<ServerBook>>>() {}.type
     private val typeChapterList = object : TypeToken<ServerResult<List<ServerChapter>>>() {}.type
     private val typeBook = object : TypeToken<ServerResult<ServerBook>>() {}.type
     private val typeChapter = object : TypeToken<ServerResult<ServerChapter>>() {}.type
+    private val typeCategoryResult = object : TypeToken<ServerResult<ServerCategoryResult>>() {}.type
 
     // ************************************************************
     // 对外接口
@@ -107,16 +112,58 @@ object ServerApi {
             }.subscribeOn(Schedulers.io())
 
     /**
-     * 发现/书库列表（按分页拉取全部书籍）。
+     * 发现/书库列表（按分页拉取，可按分类过滤）。
+     *
+     * category 为空表示「全部书籍」；非空时后端按 t_book.category 精确过滤。
      */
     @JvmStatic
     @JvmOverloads
-    fun findBooks(page: Int = 1, size: Int = DEFAULT_PAGE_SIZE): Observable<List<Book>> =
+    fun findBooks(page: Int = 1, category: String? = null, size: Int = DEFAULT_PAGE_SIZE): Observable<List<Book>> =
             Observable.fromCallable {
-                val json = getJson("/books?page=$page&size=$size")
+                val sb = StringBuilder("/books?page=").append(page).append("&size=").append(size)
+                if (!category.isNullOrBlank()) {
+                    sb.append("&category=").append(URLEncoder.encode(category, "UTF-8"))
+                }
+                val json = getJson(sb.toString())
                 val pageData: ServerPage<ServerBook> = parseResult(json, typeBookPage)
                 pageData.records?.mapNotNull { toAppBook(it) } ?: emptyList()
             }.subscribeOn(Schedulers.io())
+
+    /**
+     * 分类聚合列表（分类名 + 数量），供发现页生成分类 Tab。
+     */
+    @JvmStatic
+    fun findCategories(): Observable<List<ServerCategory>> = Observable.fromCallable {
+        val json = getJson("/categories")
+        val result: ServerCategoryResult = parseResult(json, typeCategoryResult)
+        result.items ?: emptyList()
+    }.subscribeOn(Schedulers.io())
+
+    /**
+     * 阻塞式获取分类列表：供 FindCrawler.initData() 在 io 线程内同步构建分类 Tab。
+     * 服务端不可达时返回空列表，由调用方回退到「全部书籍」单分类。
+     */
+    @JvmStatic
+    fun findCategoriesBlocking(): List<ServerCategory> = try {
+        findCategories().blockingFirst()
+    } catch (e: Exception) {
+        emptyList()
+    }
+
+    /**
+     * 从发现页分类 url 中解析分类名：`fyreader://server?category=玄幻`。
+     */
+    @JvmStatic
+    fun categoryOf(url: String?): String? {
+        if (url.isNullOrBlank()) return null
+        val idx = url.indexOf(CATEGORY_QUERY_PREFIX)
+        if (idx < 0) return null
+        return try {
+            URLDecoder.decode(url.substring(idx + CATEGORY_QUERY_PREFIX.length), "UTF-8")
+        } catch (e: Exception) {
+            url.substring(idx + CATEGORY_QUERY_PREFIX.length)
+        }
+    }
 
     /**
      * 获取书籍详情。
