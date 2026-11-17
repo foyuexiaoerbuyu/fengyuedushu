@@ -8,7 +8,7 @@ import java.util.Date;
 
 /**
  * App 版本实体，对应 t_app_version。
- * <p>替代原「语雀文档 + GitLab」更新源，客户端通过 {@code GET /api/v1/app/update} 拉取。</p>
+ * <p>App 端唯一的更新来源，客户端通过 {@code GET /api/v1/app/update} 拉取。</p>
  */
 @Data
 public class AppVersion implements Serializable {

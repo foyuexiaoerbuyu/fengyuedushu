@@ -116,7 +116,7 @@ data class ServerHealth(
 /**
  * App 更新检查响应，对应后端 /api/v1/app/update
  *
- * 该接口替代原先的语雀 / GitLab 更新源，字段与旧版 11 段分号文本一一对应：
+ * 该接口是 App 更新检查的唯一数据来源，字段与旧版接口返回的分隔文本一一对应：
  * versionName 对应版本名、updateContent 对应更新内容、downloadUrl 对应下载链接。
  */
 data class ServerAppUpdate(

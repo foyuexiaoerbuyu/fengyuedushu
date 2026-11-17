@@ -219,7 +219,7 @@ object ServerApi {
     }.subscribeOn(Schedulers.io())
 
     /**
-     * App 更新检查：走自建服务端 `/app/update`，替代原语雀 / GitLab 更新源。
+     * App 更新检查：走自建 fyreader-service 服务端接口 `/api/v1/app/update`。
      *
      * @param versionCode 客户端当前 versionCode，服务端据此计算 hasUpdate / 强制更新
      */
@@ -234,7 +234,7 @@ object ServerApi {
 
     /**
      * 阻塞式检查更新：供 [xyz.fycz.myreader.application.App.checkVersionByServer] 在子线程内直接调用。
-     * 服务端不可达时抛出异常，由调用方回退到原第三方更新源。
+     * 服务端不可达时抛出异常，由调用方决定是否提示检查失败。
      */
     @JvmStatic
     @JvmOverloads
@@ -247,7 +247,7 @@ object ServerApi {
 
     /**
      * 更新检查专用客户端：服务端地址未配置或不可达时快速失败，
-     * 避免「关于」页手工检查要等满默认 30s 超时才回退第三方更新源。
+     * 避免「关于」页手工检查在服务端不可达时要等满默认 30s 超时。
      */
     private val updateCheckClient: OkHttpClient by lazy {
         OkHttpUtils.getOkHttpClient().newBuilder()

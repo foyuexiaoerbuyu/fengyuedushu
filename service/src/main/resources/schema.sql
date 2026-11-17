@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS t_book_group (
     create_time TIMESTAMP  DEFAULT CURRENT_TIMESTAMP
 );
 
--- App 版本表：替代原语雀 / GitLab 更新源，客户端通过 /api/v1/app/update 拉取
+-- App 版本表：App 更新检查的唯一数据来源，客户端通过 /api/v1/app/update 拉取
 CREATE TABLE IF NOT EXISTS t_app_version (
     id                VARCHAR(64) PRIMARY KEY,
     platform          VARCHAR(32)  DEFAULT 'android',

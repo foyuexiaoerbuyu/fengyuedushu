@@ -139,7 +139,7 @@ public class OpenApiController {
     }
 
     /**
-     * App 更新检查，替代原语雀 / GitLab 更新源。
+     * App 更新检查，App 端唯一的更新来源。
      *
      * @param platform        平台标识，默认 android
      * @param clientVersionCode 客户端当前 versionCode，用于计算 hasUpdate / 强制更新

@@ -272,7 +272,7 @@ public class App extends Application {
     /**
      * 检查更新，仅走自建服务端 fyreader-service 的 /api/v1/app/update。
      * <p>
-     * 已彻底移除语雀文档 / GitLab 文本两个第三方兜底更新源，服务端不可达时不再降级更新：
+     * 更新来源只有自建 fyreader-service 服务端接口（/api/v1/app/update），不可达时不做任何降级更新：
      * 手动检查提示失败，后台静默检查保持静默。
      */
     public static void checkVersionByServer(final AppCompatActivity activity, final boolean isManualCheck) {
@@ -289,7 +289,7 @@ public class App extends Application {
      * 走自建服务端 fyreader-service 的 /api/v1/app/update 检查更新。
      * <p>
      * 不依赖服务端模式开关：只要服务端可达就以服务端结果为准（快速失败，超时 3s/5s）。
-     * 这是唯一的更新来源，服务端不可达时不再回退任何第三方更新源。
+     * 这是唯一的更新来源，服务端不可达时不进行更新。
      *
      * @return true 表示服务端已完成本次检查（有更新或确认已是最新）；
      * false 表示服务端不可达或返回异常，由调用方决定是否提示失败。
@@ -305,7 +305,7 @@ public class App extends Application {
             String updateContent = update.getUpdateContent() == null ? "" : update.getUpdateContent();
             boolean isForceUpdate = Boolean.TRUE.equals(update.getForceUpdate());
 
-            // 同步域名 / 插件配置 / 启动图等附带字段，保持与原更新源一致的本地缓存
+            // 同步域名 / 插件配置 / 启动图等附带字段，保持与旧版一致的本地缓存
             SharedPreUtils.getInstance().putString("domain",
                     update.getDomain() == null ? "" : update.getDomain());
             SharedPreUtils.getInstance().putString("pluginConfigUrl",

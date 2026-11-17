@@ -189,7 +189,7 @@ Base URL：`http://127.0.0.1:8088`
 
 ### 1.11 App 更新检查 `GET /api/v1/app/update`
 
-App「关于 → 检查更新」的正式数据源，替代原先的语雀 / GitLab 第三方更新源。
+App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 服务端接口 `/api/v1/app/update` 提供。
 
 | 参数 | 必填 | 说明 |
 | --- | --- | --- |
