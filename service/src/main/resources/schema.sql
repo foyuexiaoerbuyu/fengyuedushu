@@ -66,3 +66,24 @@ CREATE TABLE IF NOT EXISTS t_book_group (
     remark     VARCHAR(512),
     create_time TIMESTAMP  DEFAULT CURRENT_TIMESTAMP
 );
+
+-- App 版本表：替代原语雀 / GitLab 更新源，客户端通过 /api/v1/app/update 拉取
+CREATE TABLE IF NOT EXISTS t_app_version (
+    id                VARCHAR(64) PRIMARY KEY,
+    platform          VARCHAR(32)  DEFAULT 'android',
+    version_code      INT          NOT NULL,
+    version_name      VARCHAR(64),
+    force_update      TINYINT      DEFAULT 0,
+    min_version_code  INT          DEFAULT 0,
+    download_url      VARCHAR(1024),
+    update_content    CLOB,
+    domain            VARCHAR(255),
+    plugin_config_url VARCHAR(1024),
+    splash_image_url  VARCHAR(1024),
+    splash_image_md5  VARCHAR(64),
+    enabled           TINYINT      DEFAULT 1,
+    create_time       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    update_time       TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_version_platform ON t_app_version(platform, version_code);

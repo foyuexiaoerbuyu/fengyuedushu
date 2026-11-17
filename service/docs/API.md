@@ -187,6 +187,46 @@ Base URL：`http://127.0.0.1:8088`
 ]
 ```
 
+### 1.11 App 更新检查 `GET /api/v1/app/update`
+
+App「关于 → 检查更新」的正式数据源，替代原先的语雀 / GitLab 第三方更新源。
+
+| 参数 | 必填 | 说明 |
+| --- | --- | --- |
+| platform | 否 | 平台标识，默认 `android` |
+| versionCode | 否 | 客户端当前 `versionCode`，默认 `0`；用于计算 `hasUpdate` 与强制更新 |
+
+```json
+{
+  "code": 0, "message": "ok",
+  "data": {
+    "hasUpdate": true,
+    "versionCode": 271,
+    "versionName": "v2.7.1",
+    "forceUpdate": false,
+    "minVersionCode": 260,
+    "downloadUrl": "/api/v1/app/apk",
+    "updateContent": "1. 修复若干问题\n2. 优化阅读体验",
+    "domain": "",
+    "pluginConfigUrl": "",
+    "splashImageUrl": "",
+    "splashImageMd5": ""
+  },
+  "timestamp": 1794887697783, "success": true
+}
+```
+
+判定规则：
+
+- `hasUpdate = 服务端最新 versionCode > 客户端 versionCode`
+- `forceUpdate = (force_update == 1) || (客户端 versionCode < min_version_code 且 min_version_code > 0)`
+- 版本记录中 `download_url` 为空时，接口自动返回 `/api/v1/app/apk`（客户端按 baseUrl 拼接为绝对地址）
+- 无版本记录时返回 `hasUpdate=false`、`versionCode=0`，各字符串字段为空
+
+### 1.12 下载最新 APK `GET /api/v1/app/apk`
+
+从 `fyreader.apk-dir`（默认 `./data/apk`）目录中取**修改时间最新**的 `.apk` 文件流式返回，`Content-Type: application/octet-stream`，带 `Content-Disposition: attachment`。该接口直接返回 `ResponseEntity`，不套统一响应体。目录不存在或无 apk 文件时返回 `404`。
+
 ---
 
 ## 2. 管理端接口 `/api/admin`
@@ -276,15 +316,45 @@ Base URL：`http://127.0.0.1:8088`
 
 解析不到章节时返回 `code=400`，`message="未解析到任何章节，请检查文件内容或更换编码"`。
 
+### 2.6 版本配置
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/app/version?platform=android` | 读取该平台最新版本记录，供「版本发布」Tab 回填；无记录时 `data=null` |
+| PUT | `/api/admin/app/version` | 保存版本记录：`id` 命中则更新，否则新建（`av_` + UUID） |
+
+请求体字段（`versionCode` 必填）：
+
+```json
+{
+  "id": "av_xxx",
+  "platform": "android",
+  "versionCode": 271,
+  "versionName": "v2.7.1",
+  "forceUpdate": 0,
+  "minVersionCode": 260,
+  "downloadUrl": "",
+  "updateContent": "1. 修复若干问题\n2. 优化阅读体验",
+  "domain": "",
+  "splashImageUrl": "",
+  "splashImageMd5": "",
+  "pluginConfigUrl": "",
+  "enabled": 1
+}
+```
+
+省略字段时默认 `platform=android`、`forceUpdate=0`、`minVersionCode=0`、`enabled=1`。保存成功后返回落库后的完整记录。
+
 ---
 
 ## 3. 管理页面
 
-打开 <http://127.0.0.1:8088/> 即为管理页面（根路径自动跳转 `/index.html`），含四个模块：
+打开 <http://127.0.0.1:8088/> 即为管理页面（根路径自动跳转 `/index.html`），含五个模块：
 
 - 书籍管理：关键词搜索、排序、分页、新增/编辑/删除、重算统计
 - 章节管理：选书后分页查看目录、编辑正文、新增/删除章节
 - 书源管理：元数据增删改
+- 版本发布：维护 App 更新检查返回的版本号 / 下载地址 / 更新说明，对应 `/api/v1/app/update`
 - TXT 导入：上传文件并显示导入结果
 
 页面为纯原生 HTML + `fetch`，无构建步骤，直接放在 `src/main/resources/static/` 下随 jar 发布。

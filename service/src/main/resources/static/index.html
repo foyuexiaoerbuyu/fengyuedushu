@@ -62,6 +62,7 @@
   <button class="active" data-tab="books">书籍管理</button>
   <button data-tab="chapters">章节管理</button>
   <button data-tab="sources">书源管理</button>
+  <button data-tab="version">版本发布</button>
   <button data-tab="import">TXT 导入</button>
   <button data-tab="api">接口说明</button>
 </nav>
@@ -140,6 +141,47 @@
     </table>
   </section>
 
+  <!-- 版本发布 -->
+  <section id="tab-version">
+    <div class="toolbar">
+      <button class="btn primary" onclick="loadVersion()">刷新当前配置</button>
+      <span class="hint">App「检查更新」走 /api/v1/app/update，这里配置服务端返回的版本信息。</span>
+    </div>
+    <div style="max-width:720px;background:#fff;padding:18px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+      <input type="hidden" id="v_id">
+      <div class="grid2">
+        <div class="field"><label>平台</label>
+          <select id="v_platform" onchange="loadVersion()"><option value="android">android</option><option value="ios">ios</option></select>
+        </div>
+        <div class="field"><label>版本号 versionCode *</label><input type="number" id="v_versionCode" placeholder="如 271"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>版本名 versionName</label><input type="text" id="v_versionName" placeholder="如 v2.7.1"></div>
+        <div class="field"><label>强制更新</label>
+          <select id="v_forceUpdate"><option value="0">否</option><option value="1">是</option></select>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>最低版本号 minVersionCode</label><input type="number" id="v_minVersionCode" placeholder="低于该版本强制更新，0 表示不限"></div>
+        <div class="field"><label>启用</label>
+          <select id="v_enabled"><option value="1">是</option><option value="0">否</option></select>
+        </div>
+      </div>
+      <div class="field"><label>下载地址 downloadUrl（留空自动走 /api/v1/app/apk）</label><input type="text" id="v_downloadUrl" placeholder="https://.../app-release.apk"></div>
+      <div class="field"><label>更新说明 updateContent（换行分隔）</label><textarea id="v_updateContent"></textarea></div>
+      <div class="grid2">
+        <div class="field"><label>备用域名 domain</label><input type="text" id="v_domain"></div>
+        <div class="field"><label>启动图地址 splashImageUrl</label><input type="text" id="v_splashImageUrl"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>启动图 MD5</label><input type="text" id="v_splashImageMd5"></div>
+        <div class="field"><label>插件配置地址（保留）</label><input type="text" id="v_pluginConfigUrl"></div>
+      </div>
+      <button class="btn primary" onclick="saveVersion()">保存并发布</button>
+      <p class="hint" id="versionPreview">客户端预览：/api/v1/app/update?platform=android&amp;versionCode=0</p>
+    </div>
+  </section>
+
   <!-- 导入 -->
   <section id="tab-import">
     <div class="toolbar" style="display:block;max-width:640px">
@@ -177,6 +219,8 @@
         <tr><td>GET</td><td>/api/v1/books/{id}/chapters/{chapterNo}/neighbor?direction=next</td><td>上一章 / 下一章</td></tr>
         <tr><td>GET</td><td>/api/v1/sources</td><td>可用书源</td></tr>
         <tr><td>GET</td><td>/api/v1/groups</td><td>内置分组</td></tr>
+        <tr><td>GET</td><td>/api/v1/app/update?platform=android&amp;versionCode=0</td><td>App 更新检查（替代原语雀 / GitLab 更新源）</td></tr>
+        <tr><td>GET</td><td>/api/v1/app/apk</td><td>下载最新 APK（取自 apk-dir 目录）</td></tr>
       </tbody>
     </table>
     <p class="hint">统一响应：<code>{ code:0, message:"ok", data:..., timestamp:1700000000000 }</code>；分页数据形如 <code>{ records, total, page, size, pages }</code>。</p>
@@ -308,6 +352,7 @@ document.querySelectorAll('nav button').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'sources') loadSources();
+    if (btn.dataset.tab === 'version') loadVersion();
   };
 });
 
@@ -689,6 +734,73 @@ async function doImport() {
     toast('导入成功');
     loadBooks(); loadStats(); loadCategories();
   } catch (e) { box.textContent = ''; toast(e.message, true); }
+}
+
+/* ---------- 版本发布 ---------- */
+async function loadVersion() {
+  const platform = document.getElementById('v_platform').value || 'android';
+  try {
+    const v = await api('/api/admin/app/version?platform=' + encodeURIComponent(platform));
+    if (!v) {
+      document.getElementById('v_id').value = '';
+      document.getElementById('v_versionCode').value = '';
+      document.getElementById('v_versionName').value = '';
+      document.getElementById('v_forceUpdate').value = '0';
+      document.getElementById('v_minVersionCode').value = '0';
+      document.getElementById('v_enabled').value = '1';
+      document.getElementById('v_downloadUrl').value = '';
+      document.getElementById('v_updateContent').value = '';
+      document.getElementById('v_domain').value = '';
+      document.getElementById('v_splashImageUrl').value = '';
+      document.getElementById('v_splashImageMd5').value = '';
+      document.getElementById('v_pluginConfigUrl').value = '';
+      document.getElementById('versionPreview').textContent = '当前平台还没有版本记录，填写后点击「保存并发布」。';
+      return;
+    }
+    document.getElementById('v_id').value = v.id || '';
+    document.getElementById('v_versionCode').value = v.versionCode == null ? '' : v.versionCode;
+    document.getElementById('v_versionName').value = v.versionName || '';
+    document.getElementById('v_forceUpdate').value = String(v.forceUpdate == null ? 0 : v.forceUpdate);
+    document.getElementById('v_minVersionCode').value = v.minVersionCode == null ? 0 : v.minVersionCode;
+    document.getElementById('v_enabled').value = String(v.enabled == null ? 1 : v.enabled);
+    document.getElementById('v_downloadUrl').value = v.downloadUrl || '';
+    document.getElementById('v_updateContent').value = v.updateContent || '';
+    document.getElementById('v_domain').value = v.domain || '';
+    document.getElementById('v_splashImageUrl').value = v.splashImageUrl || '';
+    document.getElementById('v_splashImageMd5').value = v.splashImageMd5 || '';
+    document.getElementById('v_pluginConfigUrl').value = v.pluginConfigUrl || '';
+    document.getElementById('versionPreview').textContent =
+      '客户端预览：/api/v1/app/update?platform=' + (v.platform || 'android') + '&versionCode=0';
+  } catch (e) { toast(e.message, true); }
+}
+
+async function saveVersion() {
+  const code = document.getElementById('v_versionCode').value.trim();
+  if (!code) { toast('请填写 versionCode', true); return; }
+  const payload = {
+    id: document.getElementById('v_id').value || null,
+    platform: document.getElementById('v_platform').value,
+    versionCode: parseInt(code, 10),
+    versionName: document.getElementById('v_versionName').value.trim(),
+    forceUpdate: parseInt(document.getElementById('v_forceUpdate').value, 10),
+    minVersionCode: parseInt(document.getElementById('v_minVersionCode').value || '0', 10),
+    enabled: parseInt(document.getElementById('v_enabled').value, 10),
+    downloadUrl: document.getElementById('v_downloadUrl').value.trim(),
+    updateContent: document.getElementById('v_updateContent').value,
+    domain: document.getElementById('v_domain').value.trim(),
+    splashImageUrl: document.getElementById('v_splashImageUrl').value.trim(),
+    splashImageMd5: document.getElementById('v_splashImageMd5').value.trim(),
+    pluginConfigUrl: document.getElementById('v_pluginConfigUrl').value.trim()
+  };
+  try {
+    await api('/api/admin/app/version', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    toast('版本配置已保存');
+    loadVersion();
+  } catch (e) { toast(e.message, true); }
 }
 
 /* ---------- 启动 ---------- */

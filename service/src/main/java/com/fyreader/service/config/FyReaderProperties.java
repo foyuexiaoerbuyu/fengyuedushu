@@ -23,4 +23,7 @@ public class FyReaderProperties {
 
     /** 单页最大条数 */
     private int maxPageSize = 200;
+
+    /** APK 存放目录，/api/v1/app/apk 从这里取最新的安装包 */
+    private String apkDir = "./data/apk";
 }

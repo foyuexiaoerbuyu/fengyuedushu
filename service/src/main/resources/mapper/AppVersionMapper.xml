@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fyreader.service.mapper.AppVersionMapper">
+
+    <sql id="Base_Column_List">
+        id, platform, version_code, version_name, force_update, min_version_code, download_url,
+        update_content, domain, plugin_config_url, splash_image_url, splash_image_md5, enabled,
+        create_time, update_time
+    </sql>
+
+    <select id="selectLatest" resultType="com.fyreader.service.entity.AppVersion">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_app_version
+        WHERE platform = #{platform} AND enabled = 1
+        ORDER BY version_code DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectById" resultType="com.fyreader.service.entity.AppVersion">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_app_version WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.fyreader.service.entity.AppVersion">
+        INSERT INTO t_app_version (
+            id, platform, version_code, version_name, force_update, min_version_code, download_url,
+            update_content, domain, plugin_config_url, splash_image_url, splash_image_md5, enabled,
+            create_time, update_time
+        ) VALUES (
+            #{id},
+            <choose><when test="platform != null">#{platform}</when><otherwise>'android'</otherwise></choose>,
+            #{versionCode}, #{versionName},
+            <choose><when test="forceUpdate != null">#{forceUpdate}</when><otherwise>0</otherwise></choose>,
+            <choose><when test="minVersionCode != null">#{minVersionCode}</when><otherwise>0</otherwise></choose>,
+            #{downloadUrl}, #{updateContent}, #{domain}, #{pluginConfigUrl},
+            #{splashImageUrl}, #{splashImageMd5},
+            <choose><when test="enabled != null">#{enabled}</when><otherwise>1</otherwise></choose>,
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="update" parameterType="com.fyreader.service.entity.AppVersion">
+        UPDATE t_app_version
+        <set>
+            <if test="platform != null">platform = #{platform},</if>
+            <if test="versionCode != null">version_code = #{versionCode},</if>
+            <if test="versionName != null">version_name = #{versionName},</if>
+            <if test="forceUpdate != null">force_update = #{forceUpdate},</if>
+            <if test="minVersionCode != null">min_version_code = #{minVersionCode},</if>
+            <if test="downloadUrl != null">download_url = #{downloadUrl},</if>
+            <if test="updateContent != null">update_content = #{updateContent},</if>
+            <if test="domain != null">domain = #{domain},</if>
+            <if test="pluginConfigUrl != null">plugin_config_url = #{pluginConfigUrl},</if>
+            <if test="splashImageUrl != null">splash_image_url = #{splashImageUrl},</if>
+            <if test="splashImageMd5 != null">splash_image_md5 = #{splashImageMd5},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+</mapper>

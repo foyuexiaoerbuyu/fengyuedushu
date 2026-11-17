@@ -3,11 +3,13 @@ package com.fyreader.service.controller;
 import com.fyreader.service.common.PageResult;
 import com.fyreader.service.dto.BookQuery;
 import com.fyreader.service.dto.ImportResult;
+import com.fyreader.service.entity.AppVersion;
 import com.fyreader.service.entity.Book;
 import com.fyreader.service.entity.BookSource;
 import com.fyreader.service.entity.Chapter;
 import com.fyreader.service.mapper.BookMapper;
 import com.fyreader.service.mapper.ChapterMapper;
+import com.fyreader.service.service.AppVersionService;
 import com.fyreader.service.service.BookService;
 import com.fyreader.service.service.BookSourceService;
 import com.fyreader.service.service.ChapterService;
@@ -41,16 +43,19 @@ public class AdminApiController {
     private final ImportService importService;
     private final BookMapper bookMapper;
     private final ChapterMapper chapterMapper;
+    private final AppVersionService appVersionService;
 
     public AdminApiController(BookService bookService, ChapterService chapterService,
                               BookSourceService bookSourceService, ImportService importService,
-                              BookMapper bookMapper, ChapterMapper chapterMapper) {
+                              BookMapper bookMapper, ChapterMapper chapterMapper,
+                              AppVersionService appVersionService) {
         this.bookService = bookService;
         this.chapterService = chapterService;
         this.bookSourceService = bookSourceService;
         this.importService = importService;
         this.bookMapper = bookMapper;
         this.chapterMapper = chapterMapper;
+        this.appVersionService = appVersionService;
     }
 
     /** 分类聚合，供后台分类筛选下拉使用 */
@@ -151,6 +156,21 @@ public class AdminApiController {
     public Map<String, Object> deleteSource(@PathVariable("id") String id) {
         bookSourceService.delete(id);
         return ok("已删除书源");
+    }
+
+    // ---------------- 版本发布 ----------------
+
+    /** 读取指定平台的最新版本配置，供「版本发布」Tab 回填表单 */
+    @GetMapping("/app/version")
+    public AppVersion getAppVersion(
+            @RequestParam(value = "platform", required = false, defaultValue = "android") String platform) {
+        return appVersionService.latest(platform);
+    }
+
+    /** 保存（新增或更新）版本配置 */
+    @PutMapping("/app/version")
+    public AppVersion saveAppVersion(@RequestBody AppVersion version) {
+        return appVersionService.save(version);
     }
 
     // ---------------- 导入 ----------------

@@ -66,6 +66,7 @@ object ServerApi {
     private val typeBook = object : TypeToken<ServerResult<ServerBook>>() {}.type
     private val typeChapter = object : TypeToken<ServerResult<ServerChapter>>() {}.type
     private val typeCategoryResult = object : TypeToken<ServerResult<ServerCategoryResult>>() {}.type
+    private val typeAppUpdate = object : TypeToken<ServerResult<ServerAppUpdate>>() {}.type
 
     // ************************************************************
     // 对外接口
@@ -214,6 +215,28 @@ object ServerApi {
         }
         content
     }.subscribeOn(Schedulers.io())
+
+    /**
+     * App 更新检查：走自建服务端 `/app/update`，替代原语雀 / GitLab 更新源。
+     *
+     * @param versionCode 客户端当前 versionCode，服务端据此计算 hasUpdate / 强制更新
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun checkAppUpdate(versionCode: Int, platform: String = "android"): Observable<ServerAppUpdate> =
+            Observable.fromCallable {
+                val json = getJson("/app/update?platform=$platform&versionCode=$versionCode")
+                parseResult<ServerAppUpdate>(json, typeAppUpdate)
+            }.subscribeOn(Schedulers.io())
+
+    /**
+     * 阻塞式检查更新：供 [xyz.fycz.myreader.application.App.checkVersionByServer] 在子线程内直接调用。
+     * 服务端不可达时抛出异常，由调用方回退到原第三方更新源。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun checkAppUpdateBlocking(versionCode: Int, platform: String = "android"): ServerAppUpdate =
+            checkAppUpdate(versionCode, platform).blockingFirst()
 
     // ************************************************************
     // HTTP

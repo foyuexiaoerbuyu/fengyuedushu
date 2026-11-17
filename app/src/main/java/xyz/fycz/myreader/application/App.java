@@ -76,6 +76,9 @@ import xyz.fycz.myreader.util.help.SSLSocketClient;
 import xyz.fycz.myreader.util.help.StringHelper;
 import xyz.fycz.myreader.util.utils.NetworkUtils;
 import xyz.fycz.myreader.util.utils.OkHttpUtils;
+import xyz.fycz.myreader.webapi.server.ServerApi;
+import xyz.fycz.myreader.webapi.server.ServerAppUpdate;
+import xyz.fycz.myreader.webapi.server.ServerConfig;
 
 
 public class App extends Application {
@@ -273,6 +276,11 @@ public class App extends Application {
      */
     public static void checkVersionByServer(final AppCompatActivity activity, final boolean isManualCheck) {
         App.getApplication().newThread(() -> {
+            final int versionCode = getVersionCode();
+            // 优先走自建服务端 /api/v1/app/update，失败或无配置时回退到原第三方更新源
+            if (checkUpdateByOwnServer(activity, isManualCheck, versionCode)) {
+                return;
+            }
             try {
                 String content = OkHttpUtils.getUpdateInfo();
                 if (StringHelper.isEmpty(content)) {
@@ -311,7 +319,6 @@ public class App extends Application {
                 SharedPreUtils.getInstance().putString("domain", domain);
                 String pluginConfigUrl = contents[10].substring(contents[10].indexOf(":") + 1);
                 SharedPreUtils.getInstance().putString("pluginConfigUrl", pluginConfigUrl);
-                int versionCode = getVersionCode();
 
                 isForceUpdate = isForceUpdate && forceUpdateVersion > versionCode;
                 if (!StringHelper.isEmpty(downloadLink)) {
@@ -344,6 +351,78 @@ public class App extends Application {
                 }
             }
         });
+    }
+
+
+    /**
+     * 走自建服务端 fyreader-service 的 /api/v1/app/update 检查更新。
+     *
+     * @return true 表示服务端已完成本次检查（有更新或确认已是最新），无需再回退第三方更新源；
+     * false 表示服务端未启用或请求失败，由调用方回退到原语雀 / GitLab 更新源。
+     */
+    private static boolean checkUpdateByOwnServer(final AppCompatActivity activity, final boolean isManualCheck,
+                                                 final int versionCode) {
+        if (!ServerConfig.isEnabled()) {
+            return false;
+        }
+        try {
+            ServerAppUpdate update = ServerApi.checkAppUpdateBlocking(versionCode);
+            if (update == null) {
+                return false;
+            }
+            int newestVersion = update.getVersionCode() == null ? 0 : update.getVersionCode();
+            String updateContent = update.getUpdateContent() == null ? "" : update.getUpdateContent();
+            boolean isForceUpdate = Boolean.TRUE.equals(update.getForceUpdate());
+
+            // 同步域名 / 插件配置 / 启动图等附带字段，保持与原更新源一致的本地缓存
+            SharedPreUtils.getInstance().putString("domain",
+                    update.getDomain() == null ? "" : update.getDomain());
+            SharedPreUtils.getInstance().putString("pluginConfigUrl",
+                    update.getPluginConfigUrl() == null ? "" : update.getPluginConfigUrl());
+            String splashImageUrl = update.getSplashImageUrl();
+            if (!StringHelper.isEmpty(splashImageUrl)) {
+                String oldSplashTime = SharedPreUtils.getInstance().getString("splashTime");
+                SharedPreUtils.getInstance().putBoolean("needUdSI", !splashImageUrl.equals(oldSplashTime));
+                SharedPreUtils.getInstance().putString("splashTime", splashImageUrl);
+                SharedPreUtils.getInstance().putString("splashImageUrl", splashImageUrl);
+            }
+            if (!StringHelper.isEmpty(update.getSplashImageMd5())) {
+                SharedPreUtils.getInstance().putString("splashImageMD5", update.getSplashImageMd5());
+            }
+
+            String downloadLink = update.getDownloadUrl() == null ? "" : update.getDownloadUrl().trim();
+            if (downloadLink.startsWith("/")) {
+                // 服务端只给相对路径（如 /api/v1/app/apk）时，按当前 baseUrl 拼成绝对地址
+                downloadLink = ServerConfig.absoluteUrl(downloadLink);
+            }
+            if (StringHelper.isEmpty(downloadLink)) {
+                downloadLink = URLCONST.APP_DIR_URL;
+            }
+            SharedPreUtils.getInstance().putString(getmContext().getString(R.string.downloadLink), downloadLink);
+
+            StringBuilder s = new StringBuilder();
+            for (String line : updateContent.replace("\r\n", "\n").split("[\n/]")) {
+                if (StringHelper.isEmpty(line)) {
+                    continue;
+                }
+                s.append(line).append("<br>");
+            }
+            Log.i("检查更新（服务端），最新版本", newestVersion + "");
+            if (newestVersion > versionCode) {
+                Setting setting = SysManager.getSetting();
+                if (isManualCheck || setting.getNewestVersionCode() < newestVersion || isForceUpdate) {
+                    setting.setNewestVersionCode(newestVersion);
+                    SysManager.saveSetting(setting);
+                    getApplication().updateApp2(activity, downloadLink, newestVersion, s.toString(), isForceUpdate);
+                }
+            } else if (isManualCheck) {
+                ToastUtils.showSuccess("已经是最新版本！");
+            }
+            return true;
+        } catch (Exception e) {
+            Log.e("服务端检查更新失败，回退第三方更新源", "" + e.getLocalizedMessage());
+            return false;
+        }
     }
 
 

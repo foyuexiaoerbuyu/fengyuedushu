@@ -1,21 +1,33 @@
 package com.fyreader.service.controller;
 
 import com.fyreader.service.common.PageResult;
+import com.fyreader.service.config.FyReaderProperties;
 import com.fyreader.service.dto.BookQuery;
+import com.fyreader.service.entity.AppVersion;
 import com.fyreader.service.entity.Book;
 import com.fyreader.service.entity.BookGroup;
 import com.fyreader.service.entity.BookSource;
 import com.fyreader.service.entity.Chapter;
 import com.fyreader.service.mapper.BookGroupMapper;
+import com.fyreader.service.service.AppVersionService;
 import com.fyreader.service.service.BookService;
 import com.fyreader.service.service.BookSourceService;
 import com.fyreader.service.service.ChapterService;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.File;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,13 +44,18 @@ public class OpenApiController {
     private final ChapterService chapterService;
     private final BookSourceService bookSourceService;
     private final BookGroupMapper bookGroupMapper;
+    private final AppVersionService appVersionService;
+    private final FyReaderProperties properties;
 
     public OpenApiController(BookService bookService, ChapterService chapterService,
-                             BookSourceService bookSourceService, BookGroupMapper bookGroupMapper) {
+                             BookSourceService bookSourceService, BookGroupMapper bookGroupMapper,
+                             AppVersionService appVersionService, FyReaderProperties properties) {
         this.bookService = bookService;
         this.chapterService = chapterService;
         this.bookSourceService = bookSourceService;
         this.bookGroupMapper = bookGroupMapper;
+        this.appVersionService = appVersionService;
+        this.properties = properties;
     }
 
     /** 健康检查 */
@@ -119,5 +136,85 @@ public class OpenApiController {
     @GetMapping("/groups")
     public List<BookGroup> groups() {
         return bookGroupMapper.selectAll();
+    }
+
+    /**
+     * App 更新检查，替代原语雀 / GitLab 更新源。
+     *
+     * @param platform        平台标识，默认 android
+     * @param clientVersionCode 客户端当前 versionCode，用于计算 hasUpdate / 强制更新
+     */
+    @GetMapping("/app/update")
+    public Map<String, Object> appUpdate(
+            @RequestParam(value = "platform", required = false, defaultValue = "android") String platform,
+            @RequestParam(value = "versionCode", required = false, defaultValue = "0") int clientVersionCode) {
+        AppVersion latest = appVersionService.latest(platform);
+        Map<String, Object> data = new LinkedHashMap<>();
+        if (latest == null) {
+            data.put("hasUpdate", false);
+            data.put("versionCode", 0);
+            data.put("versionName", "");
+            data.put("forceUpdate", false);
+            data.put("minVersionCode", 0);
+            data.put("downloadUrl", "");
+            data.put("updateContent", "");
+            return data;
+        }
+        int serverVersionCode = latest.getVersionCode() == null ? 0 : latest.getVersionCode();
+        int minVersionCode = latest.getMinVersionCode() == null ? 0 : latest.getMinVersionCode();
+        boolean forceFlag = latest.getForceUpdate() != null && latest.getForceUpdate() == 1;
+        // 低于 min_version_code 的客户端强制更新；客户端未上报版本号时以 force_update 为准
+        boolean forceUpdate = forceFlag
+                || (clientVersionCode > 0 && minVersionCode > 0 && clientVersionCode < minVersionCode);
+        String downloadUrl = StringUtils.hasText(latest.getDownloadUrl())
+                ? latest.getDownloadUrl().trim()
+                : "/api/v1/app/apk";
+
+        data.put("hasUpdate", serverVersionCode > clientVersionCode);
+        data.put("versionCode", serverVersionCode);
+        data.put("versionName", latest.getVersionName() == null ? "" : latest.getVersionName());
+        data.put("forceUpdate", forceUpdate);
+        data.put("minVersionCode", minVersionCode);
+        data.put("downloadUrl", downloadUrl);
+        data.put("updateContent", latest.getUpdateContent() == null ? "" : latest.getUpdateContent());
+        data.put("domain", latest.getDomain() == null ? "" : latest.getDomain());
+        data.put("pluginConfigUrl", latest.getPluginConfigUrl() == null ? "" : latest.getPluginConfigUrl());
+        data.put("splashImageUrl", latest.getSplashImageUrl() == null ? "" : latest.getSplashImageUrl());
+        data.put("splashImageMd5", latest.getSplashImageMd5() == null ? "" : latest.getSplashImageMd5());
+        return data;
+    }
+
+    /**
+     * 下载最新 APK：从 apk-dir 中取修改时间最新的 .apk 流式返回。
+     * <p>直接返回 {@link ResponseEntity}，绕过 {@code ApiResponseAdvice} 的 JSON 包装。</p>
+     */
+    @GetMapping("/app/apk")
+    public ResponseEntity<Resource> appApk() {
+        File apk = latestApk();
+        if (apk == null) {
+            return ResponseEntity.notFound().build();
+        }
+        FileSystemResource resource = new FileSystemResource(apk);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + apk.getName() + "\"")
+                .contentLength(apk.length())
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
+    /** 取 apk 目录下最近修改的 .apk，无文件返回 null */
+    private File latestApk() {
+        String dir = StringUtils.hasText(properties.getApkDir()) ? properties.getApkDir() : "./data/apk";
+        File folder = new File(dir);
+        if (!folder.isDirectory()) {
+            return null;
+        }
+        File[] apks = folder.listFiles((d, name) -> name.toLowerCase().endsWith(".apk"));
+        if (apks == null || apks.length == 0) {
+            return null;
+        }
+        return Arrays.stream(apks)
+                .max(Comparator.comparingLong(File::lastModified))
+                .orElse(null);
     }
 }

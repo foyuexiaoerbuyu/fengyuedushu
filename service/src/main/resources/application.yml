@@ -63,3 +63,5 @@ fyreader:
   # 单次接口默认分页大小
   default-page-size: 20
   max-page-size: 200
+  # APK 存放目录：/api/v1/app/apk 会返回该目录下 version_code 最大的安装包
+  apk-dir: ./data/apk
