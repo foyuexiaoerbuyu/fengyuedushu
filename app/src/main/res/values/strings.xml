@@ -156,6 +156,14 @@
     <string name="close_refresh">禁用更新</string>
     <string name="close_refresh_tip">选择禁用更新的书籍</string>
     <string name="other_setting">其他设置</string>
+    <string name="splash_jump_setting">启动跳转设置</string>
+    <string name="triple_click_jump">连击跳转</string>
+    <string name="triple_click_jump_tip">开启后启动不自动跳转，需快速三连击闪屏</string>
+    <string name="long_press_jump">长按跳转</string>
+    <string name="long_press_jump_tip">开启后启动不自动跳转，需长按闪屏</string>
+    <string name="splash_jump_toast_both">请快速三连击或长按屏幕进入</string>
+    <string name="splash_jump_toast_triple">请快速三连击屏幕进入</string>
+    <string name="splash_jump_toast_long">请长按屏幕进入</string>
     <string name="open_store">开启书城</string>
     <string name="open_bookstore_tip">打开软件时开启书城</string>
     <string name="thread_setting">线程设置</string>

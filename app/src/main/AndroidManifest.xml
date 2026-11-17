@@ -69,11 +69,9 @@
         android:supportsRtl="true"
         android:theme="@style/MAppTheme">
 
-        <activity android:name=".ui.activity.MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+        <activity
+            android:name=".ui.activity.MainActivity"
+            android:exported="true">
 
             <meta-data
                 android:name="android.app.shortcuts"
@@ -93,7 +91,13 @@
         <activity
             android:name=".ui.activity.SplashActivity"
             android:alwaysRetainTaskState="true"
-            android:launchMode="singleTask" />
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity android:name=".ui.activity.SearchBookActivity" />
         <activity android:name=".ui.activity.BookDetailedActivity" />
 

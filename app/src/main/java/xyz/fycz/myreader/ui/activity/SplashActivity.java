@@ -25,6 +25,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.widget.Toast;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 
@@ -64,6 +65,14 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
     private boolean hasStart = false;
     private boolean startToAd = false;
     private static final String INTENT_TO_AD = "startToAd";
+
+    //连击/长按跳转
+    private boolean isTripleClickJump = false;
+    private boolean isLongPressJump = false;
+    private boolean jumpTriggered = false;
+    private int clickCount = 0;
+    private long lastClickTime = 0;
+    private static final long TRIPLE_CLICK_INTERVAL = 600;
 
     //创建子线程
     private Runnable start = () -> {
@@ -157,23 +166,79 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
                 finish();
                 return;
             }
-            if (BookGroupService.getInstance().curGroupIsPrivate()) {
-                App.runOnUiThread(() -> {
-                    MyAlertDialog.showPrivateVerifyDia(SplashActivity.this, needGoTo -> {
-                        if (!hasStart)
-                            (new Thread(start)).start();
-                    }, () -> {
-                        SharedPreUtils.getInstance().putString(SplashActivity.this.getString(R.string.curBookGroupId), "");
-                        SharedPreUtils.getInstance().putString(SplashActivity.this.getString(R.string.curBookGroupName), "");
-                        if (!hasStart)
-                            (new Thread(start)).start();
-                    });
-                });
+            isTripleClickJump = SharedPreUtils.getInstance().getBoolean("splashTripleClickJump", false);
+            isLongPressJump = SharedPreUtils.getInstance().getBoolean("splashLongPressJump", false);
+            if (isTripleClickJump || isLongPressJump) {
+                initGestureJump();
             } else {
-                if (!hasStart)
-                    (new Thread(start)).start();
+                doJump();
             }
         }
+    }
+
+    /**
+     * 执行跳转（含私密书架校验）
+     */
+    private void doJump() {
+        if (BookGroupService.getInstance().curGroupIsPrivate()) {
+            App.runOnUiThread(() -> {
+                MyAlertDialog.showPrivateVerifyDia(SplashActivity.this, needGoTo -> {
+                    if (!hasStart)
+                        (new Thread(start)).start();
+                }, () -> {
+                    SharedPreUtils.getInstance().putString(SplashActivity.this.getString(R.string.curBookGroupId), "");
+                    SharedPreUtils.getInstance().putString(SplashActivity.this.getString(R.string.curBookGroupName), "");
+                    if (!hasStart)
+                        (new Thread(start)).start();
+                });
+            });
+        } else {
+            if (!hasStart)
+                (new Thread(start)).start();
+        }
+    }
+
+    /**
+     * 开启连击/长按跳转后取消自动跳转，等待用户手势触发
+     */
+    private void initGestureJump() {
+        View target = binding.getRoot();
+        if (isTripleClickJump) {
+            target.setOnClickListener(v -> {
+                long now = System.currentTimeMillis();
+                if (now - lastClickTime > TRIPLE_CLICK_INTERVAL)
+                    clickCount = 0;
+                clickCount++;
+                lastClickTime = now;
+                if (clickCount >= 3) {
+                    clickCount = 0;
+                    triggerJump();
+                }
+            });
+        }
+        if (isLongPressJump) {
+            target.setOnLongClickListener(v -> {
+                triggerJump();
+                return true;
+            });
+        }
+        if (isTripleClickJump && isLongPressJump)
+            Toast.makeText(this, R.string.splash_jump_toast_both, Toast.LENGTH_SHORT).show();
+        else if (isTripleClickJump)
+            Toast.makeText(this, R.string.splash_jump_toast_triple, Toast.LENGTH_SHORT).show();
+        else
+            Toast.makeText(this, R.string.splash_jump_toast_long, Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 手势触发跳转，仅生效一次
+     */
+    private void triggerJump() {
+        if (jumpTriggered)
+            return;
+        jumpTriggered = true;
+        WAIT_INTERVAL = 200;
+        doJump();
     }
 
     private void loadImage() {

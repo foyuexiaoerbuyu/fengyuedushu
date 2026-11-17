@@ -100,6 +100,8 @@ public class MoreSettingActivity extends BaseActivity<ActivityMoreSettingBinding
     private int catheCap;
     private boolean isShowStatusBar;
     private boolean isLongPress;
+    private boolean isTripleClickJump;
+    private boolean isLongPressJump;
     private boolean alwaysNext;
     private boolean noMenuTitle;
     private boolean readAloudVolumeTurnPage;
@@ -182,6 +184,8 @@ public class MoreSettingActivity extends BaseActivity<ActivityMoreSettingBinding
     @Override
     protected void initWidget() {
         super.initWidget();
+        isTripleClickJump = SharedPreUtils.getInstance().getBoolean("splashTripleClickJump", false);
+        isLongPressJump = SharedPreUtils.getInstance().getBoolean("splashLongPressJump", false);
         initSwitchStatus();
         initMineShowMode();
         if (sortStyle == 1) {
@@ -261,6 +265,8 @@ public class MoreSettingActivity extends BaseActivity<ActivityMoreSettingBinding
         binding.scNoMenuTitle.setChecked(noMenuTitle);
         binding.scAdaptEnType.setChecked(enType);
         binding.scReadAloudVolumeTurnPage.setChecked(readAloudVolumeTurnPage);
+        binding.scTripleClickJump.setChecked(isTripleClickJump);
+        binding.scLongPressJump.setChecked(isLongPressJump);
     }
 
     @Override
@@ -336,6 +342,22 @@ public class MoreSettingActivity extends BaseActivity<ActivityMoreSettingBinding
                     binding.scAlwaysNext.setChecked(alwaysNext);
                     mSetting.setAlwaysNext(alwaysNext);
                     SysManager.saveSetting(mSetting);
+                }
+        );
+        binding.rlTripleClickJump.setOnClickListener(
+                (v) -> {
+                    needRefresh = false;
+                    isTripleClickJump = !isTripleClickJump;
+                    binding.scTripleClickJump.setChecked(isTripleClickJump);
+                    SharedPreUtils.getInstance().putBoolean("splashTripleClickJump", isTripleClickJump);
+                }
+        );
+        binding.rlLongPressJump.setOnClickListener(
+                (v) -> {
+                    needRefresh = false;
+                    isLongPressJump = !isLongPressJump;
+                    binding.scLongPressJump.setChecked(isLongPressJump);
+                    SharedPreUtils.getInstance().putBoolean("splashLongPressJump", isLongPressJump);
                 }
         );
         binding.rlShowStatus.setOnClickListener(
