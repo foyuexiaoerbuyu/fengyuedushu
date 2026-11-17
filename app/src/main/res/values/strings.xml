@@ -470,10 +470,6 @@
     <string name="source_code">网页源码</string>
     <string name="debug_log">调试日志</string>
     <string name="re_request">重新请求</string>
-    <string name="debug_search">测试搜索配置</string>
-    <string name="debug_info">测试书籍详情</string>
-    <string name="debug_toc">测试目录列表</string>
-    <string name="debug_content">测试章节内容</string>
     <string name="debug">测试</string>
     <string name="debug_desc" formatted="false">书源名称：%s\n书源URL：%s\n测试URL：%s</string>
     <string name="enable_source">启用书源</string>

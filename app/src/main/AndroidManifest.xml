@@ -131,10 +131,8 @@
             android:name=".ui.activity.BookSourceActivity"
             android:exported="true" />
         <activity android:name=".ui.activity.SourceEditActivity" />
-        <activity android:name=".ui.activity.SourceDebugActivity" />
         <activity android:name=".ui.activity.DonateActivity" />
         <activity android:name=".ui.activity.BookInfoEditActivity" />
-        <activity android:name=".ui.activity.SourceLoginActivity" />
         <activity android:name=".ui.activity.ReadRecordActivity" />
         <activity android:name=".ui.activity.FindBookActivity" />
         <activity android:name=".ui.activity.GroupManagerActivity" />

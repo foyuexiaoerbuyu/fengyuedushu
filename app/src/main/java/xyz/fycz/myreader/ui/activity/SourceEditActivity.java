@@ -24,7 +24,6 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ArrayAdapter;
@@ -34,14 +33,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.tabs.TabLayout;
 
-import java.net.URLEncoder;
 import java.util.List;
 
 import xyz.fycz.myreader.R;
 import xyz.fycz.myreader.base.BaseActivity;
 import xyz.fycz.myreader.common.APPCONST;
 import xyz.fycz.myreader.databinding.ActivitySourceEditBinding;
-import xyz.fycz.myreader.entity.sourcedebug.DebugEntity;
 import xyz.fycz.myreader.entity.sourceedit.EditEntity;
 import xyz.fycz.myreader.entity.sourceedit.EditEntityUtil;
 import xyz.fycz.myreader.greendao.DbManager;
@@ -49,11 +46,9 @@ import xyz.fycz.myreader.greendao.entity.rule.BookSource;
 import xyz.fycz.myreader.model.sourceAnalyzer.BookSourceManager;
 import xyz.fycz.myreader.ui.adapter.SourceEditAdapter;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
-import xyz.fycz.myreader.ui.dialog.MyAlertDialog;
 import xyz.fycz.myreader.util.help.StringHelper;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.utils.GsonExtensionsKt;
-import xyz.fycz.myreader.webapi.crawler.source.MatcherCrawler;
 
 /**
  * @author fengyue
@@ -186,23 +181,6 @@ public class SourceEditActivity extends BaseActivity<ActivitySourceEditBinding> 
                 ToastUtils.showSuccess("书源保存成功");
             }
             return true;
-        } else if (item.getItemId() == R.id.action_debug_search) {
-            debug(item.getTitle(), DebugEntity.SEARCH);
-        } else if (item.getItemId() == R.id.action_debug_info) {
-            debug(item.getTitle(), DebugEntity.INFO);
-        } else if (item.getItemId() == R.id.action_debug_toc) {
-            debug(item.getTitle(), DebugEntity.TOC);
-        } else if (item.getItemId() == R.id.action_debug_content) {
-            debug(item.getTitle(), DebugEntity.CONTENT);
-        } else if (item.getItemId() == R.id.action_login) {
-            BookSource source = getSource();
-            if (!StringHelper.isEmpty(source.getLoginUrl())) {
-                Intent intent = new Intent(this, SourceLoginActivity.class);
-                intent.putExtra(APPCONST.BOOK_SOURCE, source);
-                startActivity(intent);
-            } else {
-                ToastUtils.showWarring("当前书源没有配置登录地址");
-            }
         } else if (item.getItemId() == R.id.action_copy_source) {
             ClipboardManager mClipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             //数据
@@ -227,39 +205,6 @@ public class SourceEditActivity extends BaseActivity<ActivitySourceEditBinding> 
         return super.onOptionsItemSelected(item);
     }
 
-    private void debug(CharSequence title, int debugMode) {
-        String hint = "请输入URL";
-        if (debugMode == DebugEntity.SEARCH) {
-            hint = "请输入关键词";
-        }
-        BookSource source = getSource();
-        DebugEntity debugEntity = new DebugEntity();
-        debugEntity.setDebugMode(debugMode);
-        debugEntity.setBookSource(source);
-        MyAlertDialog.createInputDia(this, String.valueOf(title), hint,
-                "", true, 500, text -> {
-                    if (debugMode == DebugEntity.SEARCH) {
-                        debugEntity.setKey(text);
-                        try {
-                            MatcherCrawler sc = new MatcherCrawler(source);
-                            if (!sc.getSearchCharset().toLowerCase().equals("utf-8")) {
-                                text = URLEncoder.encode(text, sc.getSearchCharset());
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        debugEntity.setUrl(source.getSearchRule().getSearchUrl().replace("{key}", text));
-                    } else {
-                        debugEntity.setUrl(text);
-                    }
-                }, (dialog, which) -> {
-                    if (!TextUtils.isEmpty(debugEntity.getUrl())) {
-                        Intent intent = new Intent(this, SourceDebugActivity.class);
-                        intent.putExtra("debugEntity", debugEntity);
-                        startActivity(intent);
-                    }
-                });
-    }
 
     @Override
     public void finish() {
