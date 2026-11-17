@@ -2,12 +2,14 @@
 AIGC:
     Label: "1"
     ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_ea337339e28a11f1b140525400de85a5
-    ReservedCode1: 3VEBkABeL+LyTO3GBeRw1Kcn35ThQe+e/of7J1HUZDMPWYAfzf1F+KaMAKWvhdDhIaYtpniUZRAGe+FQx6Ob+SIlUQlp5m5NP3YMGJd1mTihSWIyj/qBDL4+IYS7xQV2a3+wE/xYUH0ETx1sF5PKr/kmEpQuTm8Y7C3ZKt8oQubgjscJLVIc0x3BpdA=
+    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_902c87d4e29111f1b140525400de85a5
+    ReservedCode1: A/6Lok1dsH1KLZdqiCFIdPBwf874AF5gowq/osHW8D4n8e5v89wEfiCsxwtf7EQkx/JF/ro1sXu/mEfLdhNKRE7DahOlgSsSzoETNdGzmTdvIiaSJIz8xYbn4hY6TdylgAPUUwM+acdm44kXG2117zjZX2/oQRY45JXePn5+DIw3xy2+TSQQkRJvZqs=
     ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_ea337339e28a11f1b140525400de85a5
-    ReservedCode2: 3VEBkABeL+LyTO3GBeRw1Kcn35ThQe+e/of7J1HUZDMPWYAfzf1F+KaMAKWvhdDhIaYtpniUZRAGe+FQx6Ob+SIlUQlp5m5NP3YMGJd1mTihSWIyj/qBDL4+IYS7xQV2a3+wE/xYUH0ETx1sF5PKr/kmEpQuTm8Y7C3ZKt8oQubgjscJLVIc0x3BpdA=
+    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_902c87d4e29111f1b140525400de85a5
+    ReservedCode2: A/6Lok1dsH1KLZdqiCFIdPBwf874AF5gowq/osHW8D4n8e5v89wEfiCsxwtf7EQkx/JF/ro1sXu/mEfLdhNKRE7DahOlgSsSzoETNdGzmTdvIiaSJIz8xYbn4hY6TdylgAPUUwM+acdm44kXG2117zjZX2/oQRY45JXePn5+DIw3xy2+TSQQkRJvZqs=
 ---
+
+
 
 
 
@@ -441,5 +443,6 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 - TXT 导入：上传文件并显示导入结果
 
 页面为纯原生 HTML + `fetch`，无构建步骤，直接放在 `src/main/resources/static/` 下随 jar 发布。
+*（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*
