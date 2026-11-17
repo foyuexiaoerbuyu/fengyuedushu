@@ -82,6 +82,8 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
                 Thread.sleep(WAIT_INTERVAL);//使程序休眠
                 Intent it = new Intent(SplashActivity.this, MainActivity.class);//启动MainActivity
                 it.putExtra("startFromSplash", true);
+                // 复用已存在的主界面，避免栈内出现重复实例
+                it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 startActivity(it);
                 finish();//关闭当前活动
             } catch (Exception e) {
@@ -99,6 +101,26 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
         context.startActivity(intent);
     }
 
+    /**
+     * 是否开启了启动手势跳转（连击/长按任一）
+     */
+    public static boolean isGestureJumpEnabled(Context context) {
+        SharedPreUtils preUtils = SharedPreUtils.getInstance();
+        return preUtils.getBoolean("splashTripleClickJump", false)
+                || preUtils.getBoolean("splashLongPressJump", false);
+    }
+
+    /**
+     * 由主界面转发进入闪屏，等待用户手势后再进入主界面
+     */
+    public static void startForGesture(Context context) {
+        Intent intent = new Intent(context, SplashActivity.class);
+        if (!(context instanceof Activity)) {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        }
+        context.startActivity(intent);
+    }
+
     @Override
     protected void bindView() {
         binding = ActivitySplashBinding.inflate(getLayoutInflater());
@@ -109,7 +131,8 @@ public class SplashActivity extends BaseActivity<ActivitySplashBinding> {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         // 避免从桌面启动程序后，会重新实例化入口类的activity
-        if ((getIntent().getFlags() & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) != 0 && !startToAd) {
+        if ((getIntent().getFlags() & Intent.FLAG_ACTIVITY_BROUGHT_TO_FRONT) != 0 && !startToAd
+                && !isGestureJumpEnabled(this)) {
             finish();
             return;
         }

@@ -107,6 +107,14 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         boolean startFromSplash = getIntent().getBooleanExtra("startFromSplash", false);
+        // 仅在开启连击/长按跳转时，启动入口先转到闪屏页等待手势；否则直接进主界面
+        if (!startFromSplash && SplashActivity.isGestureJumpEnabled(this)) {
+            SplashActivity.startForGesture(this);
+            super.onCreate(savedInstanceState);
+            finish();
+            overridePendingTransition(0, 0);
+            return;
+        }
         if (!startFromSplash && BookGroupService.getInstance().curGroupIsPrivate()) {
             SharedPreUtils.getInstance().putString(getString(R.string.curBookGroupId), "");
             SharedPreUtils.getInstance().putString(getString(R.string.curBookGroupName), "");
