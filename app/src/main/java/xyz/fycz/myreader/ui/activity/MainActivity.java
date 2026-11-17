@@ -167,25 +167,6 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
     @Override
     protected void initClick() {
         super.initClick();
-        binding.mainAdd.setOnClickListener(v -> {
-            // 一键添加
-            String commPath = SharedPreUtils.getInstance().getString(SharedPreUtils.KEY_NAME_COMMON_USED_DIR, null);
-            if (!commPath.endsWith("/emulated/0")) {
-                BookService.getInstance().saveBooksByPath(commPath);
-                mBookcaseFragment.getmBookcasePresenter().getData();
-            }
-            binding.mainBtmLl.setVisibility(View.GONE);
-        });
-        binding.mainClear.setOnClickListener(v -> {
-            // 一键清空
-            mBookcaseFragment.getmBookcasePresenter().clearAllBooks();
-            binding.mainBtmLl.setVisibility(View.GONE);
-        });
-        binding.mainOpenLocal.setOnClickListener(v -> {
-            // 一键直达
-            addLocalBook();
-            binding.mainBtmLl.setVisibility(View.GONE);
-        });
 
         mToolbar.setOnLongClickListener(v -> {
             //长按进入私密书架
@@ -239,9 +220,6 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
                 case R.id.menu_bookshelf:
                     if (binding.viewPagerMain.getCurrentItem() != 0) {
                         binding.viewPagerMain.setCurrentItem(0);
-                    } else {
-                        LinearLayout tools = (LinearLayout) findViewById(R.id.main_btm_ll);
-                        tools.setVisibility(tools.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
                     }
                     break;
                 case R.id.menu_find_book:
