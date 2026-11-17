@@ -1,4 +1,4 @@
-﻿/*
+/*
  * This file is part of FYReader.
  * FYReader is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -241,7 +241,7 @@ dependencies {
     implementation 'com.github.gedoor:rhino-android:1.6'
 
     //XXPermissions
-    implementation 'com.github.getActivity:XXPermissions:11.2'
+    implementation 'com.github.getActivity:XXPermissions:11.6'
 
     //epub
     implementation('com.positiondev.epublib:epublib-core:3.1') {
@@ -265,6 +265,10 @@ dependencies {
 
     //https://github.com/fengyuecanzhu/Maple
     implementation("me.fycz.maple:maple:1.9")
+
+    //原由 :user/:plugin 模块传递提供，模块移除后需显式声明
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.0.0'
+    implementation 'androidx.media:media:1.2.1'
 }
 
 greendao {
