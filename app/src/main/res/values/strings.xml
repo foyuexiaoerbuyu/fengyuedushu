@@ -86,6 +86,7 @@
     <string name="menu_bookcase_add">本地导入</string>
     <string name="menu_bookcase_syn">同步书架</string>
     <string name="menu_bookcase_download_all">一键缓存</string>
+    <string name="menu_bookcase_clear">清空书架</string>
     <string name="menu_settings">应用设置</string>
     <string name="menu_bookcase_backup">备份/恢复</string>
     <string name="menu_bookcase_about">关于应用</string>

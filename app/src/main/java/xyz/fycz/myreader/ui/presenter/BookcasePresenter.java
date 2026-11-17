@@ -541,6 +541,9 @@ public class BookcasePresenter implements BasePresenter {
                 downloadAll(true, true);
             }
             return true;
+        } else if (itemId == R.id.action_clear_bookcase) {
+            clearBookcase();
+            return true;
         }
         return false;
     }
@@ -1104,6 +1107,21 @@ public class BookcasePresenter implements BasePresenter {
 //                    }
                     mBookService.deleteAllBooks();
                     ToastUtils.showSuccess("书籍删除成功！");
+                    init();
+                    if (mBookcaseAdapter != null) {
+                        mBookcaseAdapter.setCheckedAll(false);
+                    }
+                }, null);
+    }
+
+    /**
+     * 清空书架：删除全部书籍（书架菜单「清空书架」入口）
+     */
+    public void clearBookcase() {
+        DialogCreator.createCommonDialog(mMainActivity, "清空书架",
+                "确定要清空书架中的全部书籍吗？该操作不可恢复。", true, (dialog, which) -> {
+                    mBookService.deleteAllBooks();
+                    ToastUtils.showSuccess("书架已清空！");
                     init();
                     if (mBookcaseAdapter != null) {
                         mBookcaseAdapter.setCheckedAll(false);

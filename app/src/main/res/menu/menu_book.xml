@@ -78,6 +78,12 @@
             android:title="@string/menu_scan"
             android:visible="true"
             app:showAsAction="never" />
+        <item
+            android:id="@+id/action_clear_bookcase"
+            android:icon="@drawable/ic_delete"
+            android:title="@string/menu_bookcase_clear"
+            android:visible="true"
+            app:showAsAction="never" />
     </group>
     <group
         android:id="@+id/find_menu"
