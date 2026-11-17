@@ -101,6 +101,9 @@
   <section id="tab-chapters">
     <div class="toolbar">
       <span id="chapterTitle">未选择书籍</span>
+      <input type="text" id="chapterBookKeyword" placeholder="输入书籍名称搜索" style="width:200px"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();searchBookByName()}">
+      <button class="btn" onclick="searchBookByName()">搜索书籍名称</button>
       <input type="text" id="chapterBookId" placeholder="或直接输入书籍 ID" style="width:240px">
       <button class="btn" onclick="loadChaptersById(document.getElementById('chapterBookId').value)">加载目录</button>
       <button class="btn primary" onclick="openChapterDialog()">新增章节</button>
@@ -230,6 +233,19 @@
     <div class="dlg-foot">
       <button type="button" class="btn" onclick="document.getElementById('chapterDialog').close()">取消</button>
       <button type="button" class="btn primary" onclick="saveChapter()">保存</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="bookPickDialog">
+  <form method="dialog" onsubmit="return false">
+    <div class="dlg-head">选择书籍</div>
+    <div class="dlg-body">
+      <div class="hint" id="bookPickHint"></div>
+      <div id="bookPickList" style="max-height:340px;overflow:auto"></div>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" onclick="document.getElementById('bookPickDialog').close()">取消</button>
     </div>
   </form>
 </dialog>
@@ -441,6 +457,42 @@ async function removeBook(id, name) {
 }
 
 /* ---------- 章节 ---------- */
+async function searchBookByName() {
+  const kwEl = document.getElementById('chapterBookKeyword');
+  const kw = kwEl.value.trim();
+  if (!kw) { toast('请输入书籍名称', true); kwEl.focus(); return; }
+  const qs = new URLSearchParams({ keyword: kw, page: 1, size: 50, sort: 'update_desc' });
+  let d;
+  try { d = await api('/api/admin/books?' + qs.toString()); }
+  catch (e) { toast(e.message, true); return; }
+  const rows = (d && d.records) || [];
+  if (!rows.length) { toast('未找到书名包含「' + kw + '」的书籍', true); return; }
+  if (rows.length === 1) {
+    const b = rows[0];
+    kwEl.value = b.name || kw;
+    loadChaptersById(b.id, b.name);
+    toast('已加载《' + (b.name || b.id) + '》');
+    return;
+  }
+  document.getElementById('bookPickHint').textContent =
+    '书名包含「' + kw + '」的书籍共 ' + (d.total || rows.length) + ' 本，请选择：';
+  document.getElementById('bookPickList').innerHTML = rows.map(b => `
+    <button type="button" class="btn" style="display:block;width:100%;text-align:left;margin-bottom:6px"
+            onclick="pickBook(this)" data-id="${esc(b.id)}" data-name="${esc(b.name)}">
+      <b>${esc(b.name)}</b>
+      <div class="muted">${esc(b.author || '佚名')} · ${esc(b.category || '未分类')} · ${b.chapterCount || 0} 章 · ${esc(b.id)}</div>
+    </button>`).join('');
+  document.getElementById('bookPickDialog').showModal();
+}
+
+function pickBook(el) {
+  const id = el.dataset.id;
+  const name = el.dataset.name;
+  document.getElementById('bookPickDialog').close();
+  document.getElementById('chapterBookKeyword').value = name;
+  loadChaptersById(id, name);
+}
+
 function loadChaptersById(bookId, bookName) {
   if (!bookId) { toast('请先选择书籍或输入书籍 ID', true); return; }
   state.currentBookId = bookId;
