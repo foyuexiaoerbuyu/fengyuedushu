@@ -29,3 +29,6 @@ keystore
 *.zip
 *.tar.gz
 *.rar
+
+# 本地导入用的小说 TXT
+/小说/
