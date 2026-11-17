@@ -1,0 +1,16 @@
+# Maven 构建产物
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# H2 本地数据库文件
+data/
+*.mv.db
+*.trace.db
+*.lock.db
+
+# IDE
+.idea/
+*.iml
+
+# 日志
+*.log

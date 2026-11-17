@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fyreader.service.mapper.BookSourceMapper">
+
+    <sql id="Base_Column_List">
+        id, source_name, source_url, source_type, group_name, enabled, remark, create_time, update_time
+    </sql>
+
+    <select id="selectAll" resultType="com.fyreader.service.entity.BookSource">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book_source
+        <where>
+            <if test="onlyEnabled">
+                AND enabled = 1
+            </if>
+        </where>
+        ORDER BY create_time ASC
+    </select>
+
+    <select id="selectById" resultType="com.fyreader.service.entity.BookSource">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book_source WHERE id = #{id}
+    </select>
+
+    <insert id="insert" parameterType="com.fyreader.service.entity.BookSource">
+        INSERT INTO t_book_source (
+            id, source_name, source_url, source_type, group_name, enabled, remark, create_time, update_time
+        ) VALUES (
+            #{id}, #{sourceName}, #{sourceUrl},
+            <choose><when test="sourceType != null">#{sourceType}</when><otherwise>'API'</otherwise></choose>,
+            #{groupName},
+            <choose><when test="enabled != null">#{enabled}</when><otherwise>1</otherwise></choose>,
+            #{remark}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="update" parameterType="com.fyreader.service.entity.BookSource">
+        UPDATE t_book_source
+        <set>
+            <if test="sourceName != null">source_name = #{sourceName},</if>
+            <if test="sourceUrl != null">source_url = #{sourceUrl},</if>
+            <if test="sourceType != null">source_type = #{sourceType},</if>
+            <if test="groupName != null">group_name = #{groupName},</if>
+            <if test="enabled != null">enabled = #{enabled},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_book_source WHERE id = #{id}
+    </delete>
+
+</mapper>

@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fyreader.service.mapper.BookMapper">
+
+    <sql id="Base_Column_List">
+        id, name, author, cover_url, category, intro, status, word_count,
+        latest_chapter_id, latest_chapter_name, chapter_count,
+        source_name, source_url, info_url, remark, create_time, update_time
+    </sql>
+
+    <sql id="Query_Where">
+        <where>
+            <if test="q != null">
+                <if test="q.keyword != null and q.keyword != ''">
+                    AND (name LIKE CONCAT('%', #{q.keyword}, '%')
+                         OR author LIKE CONCAT('%', #{q.keyword}, '%'))
+                </if>
+                <if test="q.category != null and q.category != ''">
+                    AND category = #{q.category}
+                </if>
+                <if test="q.status != null and q.status != ''">
+                    AND status = #{q.status}
+                </if>
+                <if test="q.sourceName != null and q.sourceName != ''">
+                    AND source_name = #{q.sourceName}
+                </if>
+            </if>
+        </where>
+    </sql>
+
+    <select id="selectById" resultType="com.fyreader.service.entity.Book">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByQuery" resultType="com.fyreader.service.entity.Book">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book
+        <include refid="Query_Where"/>
+        ORDER BY ${orderBy}
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByQuery" resultType="long">
+        SELECT COUNT(1)
+        FROM t_book
+        <include refid="Query_Where"/>
+    </select>
+
+    <select id="selectAll" resultType="com.fyreader.service.entity.Book">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book
+        ORDER BY update_time DESC
+    </select>
+
+    <insert id="insert" parameterType="com.fyreader.service.entity.Book">
+        INSERT INTO t_book (
+            id, name, author, cover_url, category, intro, status, word_count,
+            latest_chapter_id, latest_chapter_name, chapter_count,
+            source_name, source_url, info_url, remark, create_time, update_time
+        ) VALUES (
+            #{id}, #{name}, #{author}, #{coverUrl}, #{category}, #{intro}, #{status}, #{wordCount},
+            #{latestChapterId}, #{latestChapterName}, #{chapterCount},
+            #{sourceName}, #{sourceUrl}, #{infoUrl}, #{remark},
+            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+    </insert>
+
+    <update id="update" parameterType="com.fyreader.service.entity.Book">
+        UPDATE t_book
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="author != null">author = #{author},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="intro != null">intro = #{intro},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="wordCount != null">word_count = #{wordCount},</if>
+            <if test="latestChapterId != null">latest_chapter_id = #{latestChapterId},</if>
+            <if test="latestChapterName != null">latest_chapter_name = #{latestChapterName},</if>
+            <if test="chapterCount != null">chapter_count = #{chapterCount},</if>
+            <if test="sourceName != null">source_name = #{sourceName},</if>
+            <if test="sourceUrl != null">source_url = #{sourceUrl},</if>
+            <if test="infoUrl != null">info_url = #{infoUrl},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            update_time = CURRENT_TIMESTAMP
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM t_book WHERE id = #{id}
+    </delete>
+
+    <update id="refreshChapterStat">
+        UPDATE t_book
+        SET chapter_count = (SELECT COUNT(1) FROM t_chapter c WHERE c.book_id = #{bookId}),
+            latest_chapter_id = (SELECT c.id FROM t_chapter c WHERE c.book_id = #{bookId}
+                                 ORDER BY c.chapter_no DESC LIMIT 1),
+            latest_chapter_name = (SELECT c.title FROM t_chapter c WHERE c.book_id = #{bookId}
+                                   ORDER BY c.chapter_no DESC LIMIT 1),
+            update_time = CURRENT_TIMESTAMP
+        WHERE id = #{bookId}
+    </update>
+
+</mapper>
