@@ -22,6 +22,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import xyz.fycz.myreader.common.APPCONST
 import xyz.fycz.myreader.entity.SearchBookBean
@@ -34,6 +35,7 @@ import java.io.IOException
 import java.lang.reflect.Type
 import java.net.URLDecoder
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 
 /**
  * 自建服务端（fyreader-service）客户端。
@@ -225,7 +227,8 @@ object ServerApi {
     @JvmOverloads
     fun checkAppUpdate(versionCode: Int, platform: String = "android"): Observable<ServerAppUpdate> =
             Observable.fromCallable {
-                val json = getJson("/app/update?platform=$platform&versionCode=$versionCode")
+                val json = getJson("/app/update?platform=$platform&versionCode=$versionCode",
+                        client = updateCheckClient)
                 parseResult<ServerAppUpdate>(json, typeAppUpdate)
             }.subscribeOn(Schedulers.io())
 
@@ -242,8 +245,21 @@ object ServerApi {
     // HTTP
     // ************************************************************
 
+    /**
+     * 更新检查专用客户端：服务端地址未配置或不可达时快速失败，
+     * 避免「关于」页手工检查要等满默认 30s 超时才回退第三方更新源。
+     */
+    private val updateCheckClient: OkHttpClient by lazy {
+        OkHttpUtils.getOkHttpClient().newBuilder()
+                .connectTimeout(3, TimeUnit.SECONDS)
+                .readTimeout(5, TimeUnit.SECONDS)
+                .writeTimeout(5, TimeUnit.SECONDS)
+                .build()
+    }
+
     @Throws(IOException::class)
-    private fun getJson(path: String, withToken: Boolean = true): String {
+    private fun getJson(path: String, withToken: Boolean = true,
+                        client: OkHttpClient = OkHttpUtils.getOkHttpClient()): String {
         val url = ServerConfig.apiUrl(path)
         val builder = Request.Builder()
                 .url(url)
@@ -253,7 +269,7 @@ object ServerApi {
         if (withToken) {
             builder.addHeader("X-FY-Token", ServerConfig.getToken())
         }
-        val response = OkHttpUtils.getOkHttpClient().newCall(builder.build()).execute()
+        val response = client.newCall(builder.build()).execute()
         response.use { resp ->
             val body = resp.body?.string() ?: ""
             if (!resp.isSuccessful) {

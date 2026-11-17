@@ -356,15 +356,15 @@ public class App extends Application {
 
     /**
      * 走自建服务端 fyreader-service 的 /api/v1/app/update 检查更新。
+     * <p>
+     * 不依赖服务端模式开关：只要服务端可达就以服务端结果为准（快速失败，超时 3s/5s），
+     * 服务端未配置或请求失败时才由调用方回退到原语雀 / GitLab 更新源。
      *
      * @return true 表示服务端已完成本次检查（有更新或确认已是最新），无需再回退第三方更新源；
-     * false 表示服务端未启用或请求失败，由调用方回退到原语雀 / GitLab 更新源。
+     * false 表示服务端不可达或返回异常，由调用方回退到原语雀 / GitLab 更新源。
      */
     private static boolean checkUpdateByOwnServer(final AppCompatActivity activity, final boolean isManualCheck,
                                                  final int versionCode) {
-        if (!ServerConfig.isEnabled()) {
-            return false;
-        }
         try {
             ServerAppUpdate update = ServerApi.checkAppUpdateBlocking(versionCode);
             if (update == null) {
