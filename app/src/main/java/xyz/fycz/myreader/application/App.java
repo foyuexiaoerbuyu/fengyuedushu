@@ -74,8 +74,6 @@ import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.help.SSLSocketClient;
 import xyz.fycz.myreader.util.help.StringHelper;
-import xyz.fycz.myreader.util.utils.NetworkUtils;
-import xyz.fycz.myreader.util.utils.OkHttpUtils;
 import xyz.fycz.myreader.webapi.server.ServerApi;
 import xyz.fycz.myreader.webapi.server.ServerAppUpdate;
 import xyz.fycz.myreader.webapi.server.ServerConfig;
@@ -272,83 +270,16 @@ public class App extends Application {
 
 
     /**
-     * 检查更新
+     * 检查更新，仅走自建服务端 fyreader-service 的 /api/v1/app/update。
+     * <p>
+     * 已彻底移除语雀文档 / GitLab 文本两个第三方兜底更新源，服务端不可达时不再降级更新：
+     * 手动检查提示失败，后台静默检查保持静默。
      */
     public static void checkVersionByServer(final AppCompatActivity activity, final boolean isManualCheck) {
         App.getApplication().newThread(() -> {
             final int versionCode = getVersionCode();
-            // 优先走自建服务端 /api/v1/app/update，失败或无配置时回退到原第三方更新源
-            if (checkUpdateByOwnServer(activity, isManualCheck, versionCode)) {
-                return;
-            }
-            try {
-                String content = OkHttpUtils.getUpdateInfo();
-                if (StringHelper.isEmpty(content)) {
-                    content = OkHttpUtils.getBakUpdateInfo();
-                    if (StringHelper.isEmpty(content)) {
-                        if (isManualCheck || NetworkUtils.isNetWorkAvailable()) {
-                            ToastUtils.showError("检查更新失败！");
-                        }
-                        return;
-                    }
-                }
-                String[] contents = content.split(";");
-                int newestVersion = 0;
-                String updateContent = "";
-                String downloadLink = null;
-                boolean isForceUpdate = false;
-                int forceUpdateVersion;
-                StringBuilder s = new StringBuilder();
-                newestVersion = Integer.parseInt(contents[0].substring(contents[0].indexOf(":") + 1));
-                isForceUpdate = Boolean.parseBoolean(contents[1].substring(contents[1].indexOf(":") + 1));
-                downloadLink = contents[2].substring(contents[2].indexOf(":") + 1).trim();
-                updateContent = contents[3].substring(contents[3].indexOf(":") + 1);
-                SharedPreUtils.getInstance().putString(getmContext().getString(R.string.lanzousKeyStart), contents[4].substring(contents[4].indexOf(":") + 1));
-
-                String newSplashTime = contents[5].substring(contents[5].indexOf(":") + 1);
-                String oldSplashTime = SharedPreUtils.getInstance().getString("splashTime");
-                SharedPreUtils.getInstance().putBoolean("needUdSI", !oldSplashTime.equals(newSplashTime));
-                SharedPreUtils.getInstance().putString("splashTime", contents[5].substring(contents[5].indexOf(":") + 1));
-                SharedPreUtils.getInstance().putString("splashImageUrl", contents[6].substring(contents[6].indexOf(":") + 1));
-                SharedPreUtils.getInstance().putString("splashImageMD5", contents[7].substring(contents[7].indexOf(":") + 1));
-
-                forceUpdateVersion = Integer.parseInt(contents[8].substring(contents[8].indexOf(":") + 1));
-                SharedPreUtils.getInstance().putInt("forceUpdateVersion", forceUpdateVersion);
-
-                String domain = contents[9].substring(contents[9].indexOf(":") + 1);
-                SharedPreUtils.getInstance().putString("domain", domain);
-                String pluginConfigUrl = contents[10].substring(contents[10].indexOf(":") + 1);
-                SharedPreUtils.getInstance().putString("pluginConfigUrl", pluginConfigUrl);
-
-                isForceUpdate = isForceUpdate && forceUpdateVersion > versionCode;
-                if (!StringHelper.isEmpty(downloadLink)) {
-                    SharedPreUtils.getInstance().putString(getmContext().getString(R.string.downloadLink), downloadLink);
-                } else {
-                    SharedPreUtils.getInstance().putString(getmContext().getString(R.string.downloadLink), URLCONST.APP_DIR_URL);
-                }
-                String[] updateContents = updateContent.split("/");
-                for (String string : updateContents) {
-                    s.append(string);
-                    s.append("<br>");
-                }
-                Log.i("检查更新，最新版本", newestVersion + "");
-                if (newestVersion > versionCode) {
-                    Setting setting = SysManager.getSetting();
-                    if (isManualCheck || setting.getNewestVersionCode() < newestVersion || isForceUpdate) {
-                        setting.setNewestVersionCode(newestVersion);
-                        SysManager.saveSetting(setting);
-                        getApplication().updateApp2(activity, downloadLink, newestVersion, s.toString(), isForceUpdate
-                        );
-                    }
-                } else if (isManualCheck) {
-                    ToastUtils.showSuccess("已经是最新版本！");
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                Log.e("检查更新失败！", "" + e.getLocalizedMessage());
-                if (isManualCheck || NetworkUtils.isNetWorkAvailable()) {
-                    ToastUtils.showError("检查更新失败！");
-                }
+            if (!checkUpdateByOwnServer(activity, isManualCheck, versionCode) && isManualCheck) {
+                ToastUtils.showError("检查更新失败！");
             }
         });
     }
@@ -357,11 +288,11 @@ public class App extends Application {
     /**
      * 走自建服务端 fyreader-service 的 /api/v1/app/update 检查更新。
      * <p>
-     * 不依赖服务端模式开关：只要服务端可达就以服务端结果为准（快速失败，超时 3s/5s），
-     * 服务端未配置或请求失败时才由调用方回退到原语雀 / GitLab 更新源。
+     * 不依赖服务端模式开关：只要服务端可达就以服务端结果为准（快速失败，超时 3s/5s）。
+     * 这是唯一的更新来源，服务端不可达时不再回退任何第三方更新源。
      *
-     * @return true 表示服务端已完成本次检查（有更新或确认已是最新），无需再回退第三方更新源；
-     * false 表示服务端不可达或返回异常，由调用方回退到原语雀 / GitLab 更新源。
+     * @return true 表示服务端已完成本次检查（有更新或确认已是最新）；
+     * false 表示服务端不可达或返回异常，由调用方决定是否提示失败。
      */
     private static boolean checkUpdateByOwnServer(final AppCompatActivity activity, final boolean isManualCheck,
                                                  final int versionCode) {
@@ -420,7 +351,7 @@ public class App extends Application {
             }
             return true;
         } catch (Exception e) {
-            Log.e("服务端检查更新失败，回退第三方更新源", "" + e.getLocalizedMessage());
+            Log.e("服务端检查更新失败", "" + e.getLocalizedMessage());
             return false;
         }
     }

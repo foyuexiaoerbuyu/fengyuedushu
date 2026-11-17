@@ -28,10 +28,6 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 import org.apache.commons.lang3.StringEscapeUtils;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
 
 import java.io.File;
 import java.io.IOException;
@@ -174,49 +170,6 @@ public class OkHttpUtils {
             return null;
         }
         return response.body().byteStream();
-    }
-
-    public static String getUpdateInfo() throws IOException {
-        String key = "ryvwiq";
-        if (App.isDebug()) {
-            key = "sgak2h";
-        }
-        String url = "https://www.yuque.com/api/docs/" + key + "?book_id=19981967&include_contributors=true&include_hits=true&include_like=true&include_pager=true&include_suggests=true";
-        String referer = "https://www.yuque.com/books/share/bf61f5fb-6eff-4740-ab38-749300e79306/" + key;
-        Request.Builder builder = new Request.Builder()
-                .addHeader("User-Agent", APPCONST.DEFAULT_USER_AGENT)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Referer", referer);
-        Request request = builder
-                .url(url)
-                .build();
-        Response response = getOkHttpClient()
-                .newCall(request)
-                .execute();
-        ResponseBody body = response.body();
-        if (body == null) {
-            return "";
-        } else {
-            try {
-                String bodyStr = new String(body.bytes(), StandardCharsets.UTF_8);
-                JSONObject jsonObj = new JSONObject(bodyStr);
-                jsonObj = jsonObj.getJSONObject("data");
-                String content = jsonObj.getString("content");
-                Document doc = Jsoup.parse(content);
-                content = doc.text();
-                Log.d("Http -> UpdateInfo", content);
-                return content;
-            }catch (JSONException e){
-                e.printStackTrace();
-                return "";
-            }
-        }
-    }
-
-    public static String getBakUpdateInfo() throws IOException {
-        return OkHttpUtils.getHtml("https://gitlab.com/fengyuecanzhu/fyreader-resource/-/raw/main/FYReader-Update/" +
-                (App.isDebug() ? "debug" : "release") +
-                "/content.txt");
     }
 
     public static Observable<StrResponse> getStrResponse(AnalyzeUrl analyzeUrl) {
