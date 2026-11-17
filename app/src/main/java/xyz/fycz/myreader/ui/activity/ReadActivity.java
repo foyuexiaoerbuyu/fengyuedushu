@@ -58,9 +58,9 @@ import androidx.core.content.ContextCompat;
 
 import com.gyf.immersionbar.ImmersionBar;
 import com.jaredrummler.android.colorpicker.ColorPickerDialogListener;
-import com.kongzue.dialogx.dialogs.BottomMenu;
-import com.kongzue.dialogx.interfaces.BaseDialog;
-import com.kongzue.dialogx.interfaces.OnMenuItemSelectListener;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.interfaces.BaseDialog;
+import xyz.fycz.myreader.widget.dialogx.interfaces.OnMenuItemSelectListener;
 
 import org.jetbrains.annotations.NotNull;
 

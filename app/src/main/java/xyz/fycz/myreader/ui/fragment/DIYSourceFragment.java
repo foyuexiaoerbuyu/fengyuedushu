@@ -36,7 +36,7 @@ import androidx.documentfile.provider.DocumentFile;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.kongzue.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
 
 import java.io.File;
 import java.nio.charset.StandardCharsets;

@@ -23,7 +23,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.appcompat.widget.Toolbar
 import androidx.recyclerview.widget.LinearLayoutManager
-import com.kongzue.dialogx.dialogs.BottomMenu
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu
 import io.reactivex.disposables.Disposable
 import xyz.fycz.myreader.R
 import xyz.fycz.myreader.base.BaseActivity

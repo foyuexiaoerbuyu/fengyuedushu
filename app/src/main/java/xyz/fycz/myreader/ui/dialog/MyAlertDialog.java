@@ -60,10 +60,10 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.textfield.TextInputLayout;
-import com.kongzue.dialogx.dialogs.BottomDialog;
-import com.kongzue.dialogx.dialogs.FullScreenDialog;
-import com.kongzue.dialogx.interfaces.OnBackPressedListener;
-import com.kongzue.dialogx.interfaces.OnBindView;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomDialog;
+import xyz.fycz.myreader.widget.dialogx.dialogs.FullScreenDialog;
+import xyz.fycz.myreader.widget.dialogx.interfaces.OnBackPressedListener;
+import xyz.fycz.myreader.widget.dialogx.interfaces.OnBindView;
 
 import java.net.URISyntaxException;
 import java.util.List;

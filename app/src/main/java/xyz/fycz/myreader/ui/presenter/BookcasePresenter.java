@@ -42,7 +42,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.hjq.permissions.OnPermissionCallback;
 import com.hjq.permissions.XXPermissions;
-import com.kongzue.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
 
 import org.jetbrains.annotations.NotNull;
 

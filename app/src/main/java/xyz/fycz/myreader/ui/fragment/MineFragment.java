@@ -37,7 +37,7 @@ import androidx.activity.result.contract.ActivityResultContract;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.kongzue.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
 
 import org.jetbrains.annotations.NotNull;
 

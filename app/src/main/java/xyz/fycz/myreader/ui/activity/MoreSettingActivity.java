@@ -42,7 +42,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.FragmentTransaction;
 
-import com.kongzue.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
 
 import java.io.File;
 import java.util.ArrayList;

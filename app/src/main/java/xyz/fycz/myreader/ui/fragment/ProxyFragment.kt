@@ -26,7 +26,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.NumberPicker
 import androidx.appcompat.app.AlertDialog
-import com.kongzue.dialogx.dialogs.BottomMenu
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu
 import io.reactivex.disposables.Disposable
 import xyz.fycz.myreader.R
 import xyz.fycz.myreader.application.SysManager

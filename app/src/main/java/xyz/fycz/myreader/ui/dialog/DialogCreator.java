@@ -27,7 +27,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AlertDialog;
 
-import com.kongzue.dialogx.dialogs.BottomDialog;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomDialog;
 
 import java.io.BufferedReader;
 import java.io.IOException;

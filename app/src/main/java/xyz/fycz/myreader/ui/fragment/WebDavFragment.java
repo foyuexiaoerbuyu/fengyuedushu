@@ -26,8 +26,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.NumberPicker;
 
-import com.kongzue.dialogx.dialogs.BottomMenu;
-import com.kongzue.dialogx.interfaces.OnMenuItemClickListener;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.interfaces.OnMenuItemClickListener;
 
 import org.jetbrains.annotations.NotNull;
 

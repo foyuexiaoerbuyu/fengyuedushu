@@ -27,9 +27,9 @@ import android.widget.LinearLayout;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.kongzue.dialogx.DialogX;
-import com.kongzue.dialogx.dialogs.MessageDialog;
-import com.kongzue.dialogx.interfaces.OnDialogButtonClickListener;
+import xyz.fycz.myreader.widget.dialogx.DialogX;
+import xyz.fycz.myreader.widget.dialogx.dialogs.MessageDialog;
+import xyz.fycz.myreader.widget.dialogx.interfaces.OnDialogButtonClickListener;
 
 import java.io.File;
 import java.io.FileFilter;

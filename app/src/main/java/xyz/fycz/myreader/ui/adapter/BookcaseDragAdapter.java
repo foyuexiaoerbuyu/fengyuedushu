@@ -28,7 +28,7 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.kongzue.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
 
 import org.jetbrains.annotations.NotNull;
 

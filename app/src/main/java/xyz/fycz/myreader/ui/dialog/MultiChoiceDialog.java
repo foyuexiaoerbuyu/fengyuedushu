@@ -24,7 +24,7 @@ import android.widget.Button;
 import android.widget.ListView;
 import androidx.appcompat.app.AlertDialog;
 
-import com.kongzue.dialogx.dialogs.BottomMenu;
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu;
 
 /**
  * @author fengyue

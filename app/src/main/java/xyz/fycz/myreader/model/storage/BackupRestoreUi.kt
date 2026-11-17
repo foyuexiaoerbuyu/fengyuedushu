@@ -24,7 +24,7 @@ import android.content.Intent
 import android.net.Uri
 import android.text.TextUtils
 import androidx.documentfile.provider.DocumentFile
-import com.kongzue.dialogx.dialogs.BottomMenu
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu
 import io.reactivex.Single
 import io.reactivex.SingleEmitter
 import io.reactivex.android.schedulers.AndroidSchedulers

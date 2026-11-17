@@ -20,7 +20,7 @@ package xyz.fycz.myreader.model.storage
 
 import android.os.Handler
 import android.os.Looper
-import com.kongzue.dialogx.dialogs.BottomMenu
+import xyz.fycz.myreader.widget.dialogx.dialogs.BottomMenu
 import io.reactivex.Single
 import io.reactivex.SingleOnSubscribe
 import io.reactivex.android.schedulers.AndroidSchedulers
