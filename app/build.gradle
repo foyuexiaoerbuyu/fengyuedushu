@@ -72,6 +72,16 @@ android {
             v1SigningEnabled true
             v2SigningEnabled true
         }
+        // 正式发布签名：密钥库位于项目根目录 KEY/ 下，路径使用相对位置以便跨机器复用
+        // 注意：口令入仓存在泄露风险，公开仓库前须移除或改走环境变量
+        release {
+            storeFile rootProject.file('KEY/fyreader-release.jks')
+            storePassword '+hqx8JcdxLUGVIyLK-2GWBwi'
+            keyAlias 'fyreader'
+            keyPassword '+hqx8JcdxLUGVIyLK-2GWBwi'
+            v1SigningEnabled true
+            v2SigningEnabled true
+        }
     }
 
     buildFeatures {
@@ -92,7 +102,10 @@ android {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            if (keyPropsFile.exists()) {
+            // 指向正式发布签名（KEY/fyreader-release.jks）；文件缺失时回退到旧 keystore.properties 配置
+            if (rootProject.file('KEY/fyreader-release.jks').exists()) {
+                signingConfig signingConfigs.release
+            } else if (keyPropsFile.exists()) {
                 signingConfig signingConfigs.myConifg
             }
             ndk {
