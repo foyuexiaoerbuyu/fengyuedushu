@@ -180,7 +180,7 @@ public class AdminApiController {
                                   @RequestParam(value = "bookName", required = false) String bookName,
                                   @RequestParam(value = "author", required = false) String author,
                                   @RequestParam(value = "category", required = false) String category,
-                                  @RequestParam(value = "encoding", required = false, defaultValue = "UTF-8") String encoding) {
+                                  @RequestParam(value = "encoding", required = false, defaultValue = "") String encoding) {
         return importService.importTxt(file, bookName, author, category, encoding);
     }
 

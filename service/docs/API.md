@@ -307,10 +307,10 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
 | file | 是 | TXT 文件，上限 64MB |
-| bookName | 否 | 留空时先取首行短标题，再退回文件名 |
-| author | 否 | 默认「佚名」 |
+| bookName | 否 | 留空时先解析文件头（`书名：xxx` / `《xxx》`），再取首个标题前的短标题，最后退回文件名 |
+| author | 否 | 留空时先解析文件头 `作者：xxx`，再默认「佚名」 |
 | category | 否 | 默认「其他」 |
-| encoding | 否 | 默认 UTF-8，支持 GBK / GB18030 |
+| encoding | 否 | 留空＝自动识别（BOM → 严格 UTF-8 试探 → 回落 GB18030）；显式传值（UTF-8 / GBK / GB18030 等）时按传入值解码 |
 
 响应：
 
@@ -318,12 +318,26 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 {
   "code": 0, "message": "ok",
   "data": { "bookId": "b_4cfe...", "bookName": "导入测试书", "author": "导入作者",
-            "chapterCount": 3, "wordCount": 43, "encoding": "UTF-8",
-            "chapterPreview": ["第一章 开端", "第二章 发展", "第三章 结束"],
+            "chapterCount": 3, "wordCount": 43,
+            "encoding": "GB18030", "encodingDetectedBy": "UTF-8 不成立，回落 GB18030",
+            "reusedBook": false, "droppedEmptyChapters": 0, "droppedDuplicateChapters": 0,
+            "chapterPreview": ["前言", "第一章 开端", "尾声"],
             "message": "导入成功" },
   "timestamp": 1794887697783, "success": true
 }
 ```
+
+字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| encoding | 实际采用的编码 |
+| encodingDetectedBy | 编码判定依据：`BOM(EF BB BF)` / `严格 UTF-8 探测通过` / `UTF-8 不成立，回落 GB18030` |
+| reusedBook | 是否命中同名书籍并复用其 `bookId`（章节会按本次解析结果重建） |
+| droppedEmptyChapters | 因正文为空被丢弃的章节数 |
+| droppedDuplicateChapters | 因标题重复被忽略的章节数 |
+
+章节标题识别范围：`第X章/节/回/卷/集/部/篇/幕`、`前言/序章/序言/序幕/自序/楔子/引子/正文/尾声/终章/大结局/结局/附录`、`番外`（可带编号）、`Chapter N`；标题行独立成章，行首缩进与空行容错，含句号的行按正文处理。
 
 解析不到章节时返回 `code=400`，`message="未解析到任何章节，请检查文件内容或更换编码"`。
 

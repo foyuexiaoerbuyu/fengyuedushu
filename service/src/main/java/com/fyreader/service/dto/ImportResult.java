@@ -29,6 +29,18 @@ public class ImportResult implements Serializable {
     /** 使用的字符编码 */
     private String encoding;
 
+    /** 编码识别依据（BOM / 严格 UTF-8 探测 / 回落 GB18030 / 用户指定） */
+    private String encodingDetectedBy;
+
+    /** 是否复用了已存在的同名书籍 ID */
+    private boolean reusedBook;
+
+    /** 被过滤的空正文章节数 */
+    private int droppedEmptyChapters;
+
+    /** 被过滤的重复章节数 */
+    private int droppedDuplicateChapters;
+
     /** 前若干个章节标题，便于前端确认解析是否正确 */
     private List<String> chapterPreview = new ArrayList<>();
 

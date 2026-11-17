@@ -128,6 +128,17 @@ public class ChapterService {
         bookMapper.refreshChapterStat(exists.getBookId());
     }
 
+    /** 清空某本书的全部章节（TXT 重导时先重建章节） */
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteByBook(String bookId) {
+        if (!StringUtils.hasText(bookId)) {
+            return 0;
+        }
+        int deleted = chapterMapper.deleteByBookId(bookId);
+        bookMapper.refreshChapterStat(bookId);
+        return deleted;
+    }
+
     /** 批量新增（TXT 导入用） */
     @Transactional(rollbackFor = Exception.class)
     public int batchCreate(String bookId, List<Chapter> chapters) {

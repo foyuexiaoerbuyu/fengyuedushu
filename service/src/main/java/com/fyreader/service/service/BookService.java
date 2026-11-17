@@ -96,6 +96,14 @@ public class BookService {
         return bookMapper.selectById(id);
     }
 
+    /** 按书名精确查询，未命中返回 null（TXT 重导复用书籍 ID 用） */
+    public Book getByName(String name) {
+        if (!StringUtils.hasText(name)) {
+            return null;
+        }
+        return bookMapper.selectByName(name.trim());
+    }
+
     public List<Book> listAll() {
         List<Book> books = bookMapper.selectAll();
         return books == null ? Collections.emptyList() : books;

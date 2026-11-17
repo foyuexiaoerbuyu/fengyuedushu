@@ -35,6 +35,15 @@
         WHERE id = #{id}
     </select>
 
+    <!-- TXT 重导时按书名精确匹配，命中则复用原书籍 ID -->
+    <select id="selectByName" resultType="com.fyreader.service.entity.Book">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book
+        WHERE name = #{name}
+        ORDER BY update_time DESC
+        LIMIT 1
+    </select>
+
     <select id="selectByQuery" resultType="com.fyreader.service.entity.Book">
         SELECT <include refid="Base_Column_List"/>
         FROM t_book

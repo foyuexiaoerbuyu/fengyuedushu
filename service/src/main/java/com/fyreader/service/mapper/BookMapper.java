@@ -13,6 +13,9 @@ public interface BookMapper {
 
     Book selectById(@Param("id") String id);
 
+    /** 按书名精确查询（TXT 重导时复用原书籍 ID） */
+    Book selectByName(@Param("name") String name);
+
     List<Book> selectByQuery(@Param("q") BookQuery query,
                              @Param("orderBy") String orderBy,
                              @Param("offset") int offset,
