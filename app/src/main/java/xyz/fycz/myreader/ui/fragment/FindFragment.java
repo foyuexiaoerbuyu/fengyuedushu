@@ -112,6 +112,11 @@ public class FindFragment extends BaseFragment {
         BookSource source4 = new BookSource();
         source4.setSourceName("全本小说");
         source4.setSourceUrl("xyz.fycz.myreader.webapi.crawler.find.QB5FindCrawler");
+        // 本机书库：服务端书源的发现入口
+        BookSource source5 = new BookSource();
+        source5.setSourceName("本机书库");
+        source5.setSourceUrl("xyz.fycz.myreader.webapi.crawler.find.ServerFindCrawler");
+        findSources.add(source5);
         findSources.add(source1);
         findSources.add(source2);
         findSources.add(source3);
