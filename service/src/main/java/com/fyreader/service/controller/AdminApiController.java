@@ -9,6 +9,7 @@ import com.fyreader.service.entity.BookSource;
 import com.fyreader.service.entity.Chapter;
 import com.fyreader.service.mapper.BookMapper;
 import com.fyreader.service.mapper.ChapterMapper;
+import com.fyreader.service.service.ApkStorageService;
 import com.fyreader.service.service.AppVersionService;
 import com.fyreader.service.service.BookService;
 import com.fyreader.service.service.BookSourceService;
@@ -44,11 +45,13 @@ public class AdminApiController {
     private final BookMapper bookMapper;
     private final ChapterMapper chapterMapper;
     private final AppVersionService appVersionService;
+    private final ApkStorageService apkStorageService;
 
     public AdminApiController(BookService bookService, ChapterService chapterService,
                               BookSourceService bookSourceService, ImportService importService,
                               BookMapper bookMapper, ChapterMapper chapterMapper,
-                              AppVersionService appVersionService) {
+                              AppVersionService appVersionService,
+                              ApkStorageService apkStorageService) {
         this.bookService = bookService;
         this.chapterService = chapterService;
         this.bookSourceService = bookSourceService;
@@ -56,6 +59,7 @@ public class AdminApiController {
         this.bookMapper = bookMapper;
         this.chapterMapper = chapterMapper;
         this.appVersionService = appVersionService;
+        this.apkStorageService = apkStorageService;
     }
 
     /** 分类聚合，供后台分类筛选下拉使用 */
@@ -171,6 +175,48 @@ public class AdminApiController {
     @PutMapping("/app/version")
     public AppVersion saveAppVersion(@RequestBody AppVersion version) {
         return appVersionService.save(version);
+    }
+
+    /**
+     * 上传 APK 安装包：落 fyreader.apk-dir，返回文件名 / 大小 / MD5。
+     * <p>落盘文件名做净化与防重名处理，同名不覆盖。</p>
+     */
+    @PostMapping("/app/apk")
+    public Map<String, Object> uploadApk(@RequestParam("file") MultipartFile file) {
+        return apkStorageService.upload(file);
+    }
+
+    /** 列出 apk-dir 内已有安装包（按修改时间倒序，current 标记当前客户端下载到的包） */
+    @GetMapping("/app/apk/list")
+    public Map<String, Object> listApks() {
+        List<Map<String, Object>> records = apkStorageService.list();
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("total", records.size());
+        data.put("records", records);
+        data.put("downloadUrl", "/api/v1/app/apk");
+        return data;
+    }
+
+    /**
+     * 章节详情：按书籍 + 章节取正文，供后台新窗口章节详情页使用。
+     */
+    @GetMapping("/books/{id}/chapters/{chapterId}/detail")
+    public Map<String, Object> chapterDetail(@PathVariable("id") String id,
+                                            @PathVariable("chapterId") String chapterId) {
+        Book book = bookService.get(id);
+        Chapter chapter = chapterService.getContent(id, chapterId);
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("bookId", id);
+        data.put("bookName", book == null ? "" : book.getName());
+        data.put("author", book == null ? "" : book.getAuthor());
+        data.put("chapterId", chapter.getId());
+        data.put("chapterNo", chapter.getChapterNo());
+        data.put("title", chapter.getTitle());
+        data.put("wordCount", chapter.getWordCount());
+        data.put("vip", chapter.getVip());
+        data.put("updateTime", chapter.getUpdateTime());
+        data.put("content", chapter.getContent());
+        return data;
     }
 
     // ---------------- 导入 ----------------

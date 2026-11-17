@@ -33,8 +33,9 @@ spring:
         web-allow-others: false
   servlet:
     multipart:
-      max-file-size: 64MB
-      max-request-size: 64MB
+      # 需容纳 APK 安装包（业务上限见 ApkStorageService.MAX_APK_SIZE，200MB）
+      max-file-size: 200MB
+      max-request-size: 200MB
   jackson:
     date-format: yyyy-MM-dd HH:mm:ss
     time-zone: GMT+8

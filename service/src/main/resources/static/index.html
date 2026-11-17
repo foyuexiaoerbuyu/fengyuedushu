@@ -48,6 +48,8 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .hint { color: #9aa1ae; font-size: 12px; margin-top: 6px; }
   #chapterTitle { font-weight: 600; font-size: 14px; margin: 0 0 4px; }
+  .chapter-link { color: #2f6fed; text-decoration: none; }
+  .chapter-link:hover { text-decoration: underline; }
   body.locked > header, body.locked > nav, body.locked > main { display: none; }
   #loginMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #23283a; display: flex; align-items: center; justify-content: center; z-index: 99; }
   #loginMask.hide { display: none; }
@@ -201,6 +203,27 @@
       </div>
       <button class="btn primary" onclick="saveVersion()">保存并发布</button>
       <p class="hint" id="versionPreview">客户端预览：/api/v1/app/update?platform=android&amp;versionCode=0</p>
+    </div>
+    <div style="max-width:720px;margin-top:16px;background:#fff;padding:18px;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+      <div style="font-weight:600;margin-bottom:10px">APK 安装包</div>
+      <div class="toolbar" style="margin-bottom:8px">
+        <input type="file" id="apkFile" accept=".apk" style="font-size:13px">
+        <button class="btn primary" id="apkUploadBtn" onclick="uploadApk()">上传安装包</button>
+        <button class="btn" onclick="loadApkList()">刷新列表</button>
+        <span class="hint" style="margin-left:auto">仅 .apk，上限 200MB；同名不覆盖，自动改名另存</span>
+      </div>
+      <div id="apkProgressWrap" style="display:none;height:6px;background:#eef1f5;border-radius:3px;overflow:hidden;margin-bottom:8px">
+        <div id="apkProgressBar" style="height:100%;width:0;background:#2f6fed;transition:width .15s"></div>
+      </div>
+      <div id="apkMsg" class="hint" style="min-height:18px"></div>
+      <table style="margin-top:6px">
+        <thead>
+          <tr><th>文件名</th><th style="width:100px">大小</th><th style="width:160px">上传时间</th>
+              <th style="width:100px">状态</th><th style="width:120px">操作</th></tr>
+        </thead>
+        <tbody id="apkRows"></tbody>
+      </table>
+      <p class="hint">「当前分发」为 /api/v1/app/apk 实际返回的包（按修改时间取最新）；「选为下载地址」会把 downloadUrl 填成 /api/v1/app/apk。</p>
     </div>
   </section>
 
@@ -388,7 +411,7 @@ document.querySelectorAll('nav button').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'sources') loadSources();
-    if (btn.dataset.tab === 'version') loadVersion();
+    if (btn.dataset.tab === 'version') { loadVersion(); loadApkList(); }
   };
 });
 
@@ -601,11 +624,12 @@ async function loadChapters(page) {
       tbody.innerHTML = rows.map(c => `
         <tr>
           <td>${c.chapterNo}</td>
-          <td>${esc(c.title)}${withContent && c.content ? '<div class="muted">' + esc(String(c.content).substring(0, 80)) + '…</div>' : ''}</td>
+          <td><a class="chapter-link" href="javascript:void(0)" onclick="openChapterPage('${esc(c.id)}')">${esc(c.title)}</a>${withContent && c.content ? '<div class="muted">' + esc(String(c.content).substring(0, 80)) + '…</div>' : ''}</td>
           <td>${c.wordCount || 0}</td>
           <td>${c.vip ? '是' : '否'}</td>
           <td>${fmt(c.updateTime)}</td>
           <td>
+            <button class="link" onclick="openChapterPage('${esc(c.id)}')">查看</button>
             <button class="link" onclick="openChapterDialog('${esc(c.id)}')">编辑</button>
             <button class="link" style="color:#d93b3b" onclick="removeChapter('${esc(c.id)}')">删除</button>
           </td>
@@ -917,6 +941,110 @@ document.getElementById('adminTokenInput').addEventListener('keydown', e => {
   hideLogin();
   startConsole();
 })();
+
+/* ---------- APK 上传 ---------- */
+function fmtSize(n) {
+  if (n == null) return '-';
+  if (n < 1024) return n + ' B';
+  if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+  return (n / 1024 / 1024).toFixed(2) + ' MB';
+}
+
+async function loadApkList() {
+  const tbody = document.getElementById('apkRows');
+  if (!tbody) return;
+  try {
+    const d = await api('/api/admin/app/apk/list');
+    const rows = d.records || [];
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="empty">apk 目录暂无安装包，上传后即可选用</div></td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(a => `
+      <tr>
+        <td>${esc(a.fileName)}</td>
+        <td>${esc(a.sizeText || fmtSize(a.size))}</td>
+        <td>${fmt(a.lastModified)}</td>
+        <td>${a.current ? '<b style="color:#2f6fed">当前分发</b>' : '<span class="muted">历史包</span>'}</td>
+        <td><button class="link" onclick="pickApk('${esc(a.downloadUrl)}')">选为下载地址</button></td>
+      </tr>`).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="5"><div class="empty">' + esc(e.message) + '</div></td></tr>';
+  }
+}
+
+function pickApk(url) {
+  document.getElementById('v_downloadUrl').value = url || '/api/v1/app/apk';
+  toast('已填入下载地址，记得点「保存并发布」');
+}
+
+function uploadApk() {
+  const input = document.getElementById('apkFile');
+  if (!input.files || !input.files.length) { toast('请先选择 .apk 文件', true); return; }
+  const file = input.files[0];
+  if (!/\.apk$/i.test(file.name)) { toast('只允许上传 .apk 安装包', true); return; }
+  if (file.size > 200 * 1024 * 1024) { toast('安装包超过 200MB 上限', true); return; }
+  const token = getAdminToken();
+  const wrap = document.getElementById('apkProgressWrap');
+  const bar = document.getElementById('apkProgressBar');
+  const msg = document.getElementById('apkMsg');
+  const btn = document.getElementById('apkUploadBtn');
+  wrap.style.display = 'block';
+  bar.style.width = '0%';
+  bar.style.background = '#2f6fed';
+  msg.textContent = '正在上传 ' + file.name + ' …';
+  btn.disabled = true;
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/api/admin/app/apk');
+  if (token) { xhr.setRequestHeader('X-Admin-Token', token); }
+  xhr.upload.onprogress = e => {
+    if (e.lengthComputable) { bar.style.width = Math.round(e.loaded / e.total * 100) + '%'; }
+  };
+  xhr.onload = () => {
+    btn.disabled = false;
+    let json = null;
+    try { json = JSON.parse(xhr.responseText); } catch (err) { json = null; }
+    if (xhr.status === 401) {
+      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+      showLogin('管理口令无效或已失效，请重新输入');
+      return;
+    }
+    if (!json || json.code !== 0) {
+      bar.style.width = '100%';
+      bar.style.background = '#d93b3b';
+      msg.textContent = '上传失败：' + ((json && json.message) || ('HTTP ' + xhr.status));
+      toast(msg.textContent, true);
+      return;
+    }
+    const d = json.data || {};
+    bar.style.width = '100%';
+    bar.style.background = '#12a150';
+    msg.innerHTML = '上传成功：<b>' + esc(d.fileName) + '</b> · ' + esc(d.sizeText || fmtSize(d.size)) +
+      ' · MD5 ' + esc(d.md5 || '-');
+    toast('安装包已上传');
+    document.getElementById('v_downloadUrl').value = d.downloadUrl || '/api/v1/app/apk';
+    input.value = '';
+    loadApkList();
+  };
+  xhr.onerror = () => {
+    btn.disabled = false;
+    bar.style.background = '#d93b3b';
+    msg.textContent = '上传失败：网络异常';
+    toast('上传失败：网络异常', true);
+  };
+  const form = new FormData();
+  form.append('file', file, file.name);
+  xhr.send(form);
+}
+
+/* ---------- 章节详情（新窗口） ---------- */
+function openChapterPage(chapterId) {
+  const bookId = state.currentBookId;
+  if (!bookId) { toast('请先加载书籍目录', true); return; }
+  const token = getAdminToken();
+  const qs = new URLSearchParams({ bookId: bookId, chapterId: chapterId, adminToken: token });
+  window.open('/chapter.html?' + qs.toString(), '_blank');
+}
 </script>
 </body>
 </html>

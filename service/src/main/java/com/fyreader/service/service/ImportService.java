@@ -31,6 +31,9 @@ public class ImportService {
 
     private static final int PREVIEW_SIZE = 10;
 
+    /** TXT 导入业务上限：需整体读入内存解析，故独立于 multipart 全局上限。 */
+    private static final long MAX_TXT_SIZE = 64L * 1024L * 1024L;
+
     private final BookService bookService;
     private final ChapterService chapterService;
 
@@ -44,6 +47,9 @@ public class ImportService {
                                   String category, String encoding) {
         if (file == null || file.isEmpty()) {
             throw BusinessException.badRequest("上传文件为空");
+        }
+        if (file.getSize() > MAX_TXT_SIZE) {
+            throw BusinessException.badRequest("TXT 文件超过 64MB 上限");
         }
 
         byte[] bytes;

@@ -2,12 +2,14 @@
 AIGC:
     Label: "1"
     ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_5da82539e23b11f1b140525400de85a5
-    ReservedCode1: BQ1zHzXm1JA6G8tJSrkJhSE2jMpcKU0qJbKWepvAmuvXyTeHgm1lk7hTm5oXfpHTO7bNjijcoYxkMPS7FnFcQhVSaVtVqFllF2V1tpyopH/7VVjey/zkfZ6XVI5RGuHdrBC/gcM4NnYK9SzFqUFrGSE2fcB2ZI8fzwxyA38dj90SMS8kTD3RdBlrymg=
+    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_e9a29f73e28a11f1b140525400de85a5
+    ReservedCode1: 8cv0ciolc7pniTO0xDsH+W6PMbOdbww0RTcJwWaZuHT1wnWeu5mPGmBWyYSzO3YyEqKI4rsaGd6FQCoZet1KN8Qceiis+LoHNptNTazb5rmPdRdwdUVO7sqouC/i9Cl2UUzSKH0rIgVjDnWEXdPWlnIp0KUeD/0r1E92Yq/T/p97vbMNpuELUaD9L1s=
     ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_5da82539e23b11f1b140525400de85a5
-    ReservedCode2: BQ1zHzXm1JA6G8tJSrkJhSE2jMpcKU0qJbKWepvAmuvXyTeHgm1lk7hTm5oXfpHTO7bNjijcoYxkMPS7FnFcQhVSaVtVqFllF2V1tpyopH/7VVjey/zkfZ6XVI5RGuHdrBC/gcM4NnYK9SzFqUFrGSE2fcB2ZI8fzwxyA38dj90SMS8kTD3RdBlrymg=
+    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_e9a29f73e28a11f1b140525400de85a5
+    ReservedCode2: 8cv0ciolc7pniTO0xDsH+W6PMbOdbww0RTcJwWaZuHT1wnWeu5mPGmBWyYSzO3YyEqKI4rsaGd6FQCoZet1KN8Qceiis+LoHNptNTazb5rmPdRdwdUVO7sqouC/i9Cl2UUzSKH0rIgVjDnWEXdPWlnIp0KUeD/0r1E92Yq/T/p97vbMNpuELUaD9L1s=
 ---
+
+
 
 # fyreader-service
 
@@ -165,9 +167,12 @@ GET    /api/admin/sources      POST /api/admin/sources
 PUT    /api/admin/sources/{id} DELETE /api/admin/sources/{id}
 POST   /api/admin/import/txt   multipart: file,bookName,author,category,encoding
 GET    /api/admin/app/version?platform=android   PUT /api/admin/app/version
+POST   /api/admin/app/apk       multipart: file（仅 .apk，≤200MB，同名自动改名不覆盖）
+GET    /api/admin/app/apk/list  列出 apk 目录内安装包（文件名/大小/时间/是否当前分发）
+GET    /api/admin/books/{id}/chapters/{chapterId}/detail   单章正文（供新窗口详情页）
 ```
 
-管理端所有接口都要带请求头 `X-Admin-Token: <FYREADER_ADMIN_TOKEN>`，与客户端 token 互不通用。
+管理端所有接口都要带请求头 `X-Admin-Token: <FYREADER_ADMIN_TOKEN>`，或改用查询参数 `?adminToken=`（供 `window.open` 打开的新窗口章节详情页 `/chapter.html` 使用），与客户端 token 互不通用。
 
 统一响应（成功）：
 
@@ -220,4 +225,5 @@ GET    /api/admin/app/version?platform=android   PUT /api/admin/app/version
 2. 服务端补采集器（可选）：把书源抓取搬到服务端定时任务，App 彻底不接触规则与源站
 3. 换库：改 `spring.datasource` 为 MySQL，`schema.sql` 已是 MySQL 兼容语法；初始化脚本已全部改为 `INSERT ... SELECT ... WHERE NOT EXISTS`，换库时等价替换为 `INSERT IGNORE` 即可
 4. 分页/排序：`BookQuery.sort` 走 `BookService.resolveOrderBy` 白名单，新增排序需在该方法注册
+*（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*

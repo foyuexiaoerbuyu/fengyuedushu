@@ -2,12 +2,14 @@
 AIGC:
     Label: "1"
     ContentProducer: 001191440300708461136T1XGW3
-    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_5e66f3f7e23b11f1b140525400de85a5
-    ReservedCode1: kRVKGpRcGG+XnJBF7w+C8wa6w0tKkNwvck4iSL2A9fwugSCse/j5diGrOtGJeNIhvZZ+L66uPm+/Z0BdaHeM36Q210z5IVcZboMecPDhUa7+a9IMbIZxsduXI9yIN94ZrMXz5IBwYtcHDCv0FGBMeEFD3OJRbuuf6ItCe+u0hzK8424GHZ4hmwRYbWg=
+    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_ea337339e28a11f1b140525400de85a5
+    ReservedCode1: 3VEBkABeL+LyTO3GBeRw1Kcn35ThQe+e/of7J1HUZDMPWYAfzf1F+KaMAKWvhdDhIaYtpniUZRAGe+FQx6Ob+SIlUQlp5m5NP3YMGJd1mTihSWIyj/qBDL4+IYS7xQV2a3+wE/xYUH0ETx1sF5PKr/kmEpQuTm8Y7C3ZKt8oQubgjscJLVIc0x3BpdA=
     ContentPropagator: 001191440300708461136T1XGW3
-    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_5e66f3f7e23b11f1b140525400de85a5
-    ReservedCode2: kRVKGpRcGG+XnJBF7w+C8wa6w0tKkNwvck4iSL2A9fwugSCse/j5diGrOtGJeNIhvZZ+L66uPm+/Z0BdaHeM36Q210z5IVcZboMecPDhUa7+a9IMbIZxsduXI9yIN94ZrMXz5IBwYtcHDCv0FGBMeEFD3OJRbuuf6ItCe+u0hzK8424GHZ4hmwRYbWg=
+    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_ea337339e28a11f1b140525400de85a5
+    ReservedCode2: 3VEBkABeL+LyTO3GBeRw1Kcn35ThQe+e/of7J1HUZDMPWYAfzf1F+KaMAKWvhdDhIaYtpniUZRAGe+FQx6Ob+SIlUQlp5m5NP3YMGJd1mTihSWIyj/qBDL4+IYS7xQV2a3+wE/xYUH0ETx1sF5PKr/kmEpQuTm8Y7C3ZKt8oQubgjscJLVIc0x3BpdA=
 ---
+
+
 
 # fyreader-service 接口文档
 
@@ -58,12 +60,13 @@ Base URL：`http://127.0.0.1:8088`
 | 路径 | 凭据 | 说明 |
 | --- | --- | --- |
 | `/api/v1/**` | 请求头 `X-FY-Token: <FYREADER_TOKEN>`，或查询参数 `?token=` | 受 `fyreader.auth-enabled` 控制（默认 `true`）；`FYREADER_TOKEN` 未配置时一律 401 |
-| `/api/admin/**` | 请求头 `X-Admin-Token: <FYREADER_ADMIN_TOKEN>` | 始终校验，不受 `auth-enabled` 影响；未配置管理口令时一律 401 |
+| `/api/admin/**` | 请求头 `X-Admin-Token: <FYREADER_ADMIN_TOKEN>`，或查询参数 `?adminToken=` | 始终校验，不受 `auth-enabled` 影响；未配置管理口令时一律 401 |
 
 例外与说明：
 
 - `GET /api/v1/app/apk` 不鉴权——App 用系统浏览器下载 APK，浏览器不会带自定义请求头。
-- 静态资源（`/`、`/index.html`）不鉴权，但页面加载后会先要求输入管理口令，校验通过才拉取数据、渲染管理界面。
+- 静态资源（`/`、`/index.html`、`/chapter.html`）不鉴权，但页面加载后会先要求输入管理口令，校验通过才拉取数据、渲染管理界面。
+- `?adminToken=` 供**新窗口页面**使用：`window.open` 打开的新标签页无法携带自定义请求头，章节详情页 `/chapter.html` 因此通过查询参数口令调用管理接口；口令错误统一返回 401，页面随即要求重新输入并回填到地址栏。
 - 校验失败返回 `401` + `{"code":401,"message":"token 无效或缺失"}`（管理端为「管理口令无效或缺失」）。凭据比较走定长比较，避免时序侧信道。
 
 ### 0.4 时间与字段
@@ -272,6 +275,7 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/admin/books/{id}/chapters` | 分页目录，`withContent=true` 带正文 |
+| GET | `/api/admin/books/{id}/chapters/{chapterId}/detail` | 取单章正文与统计，供管理页新窗口打开章节详情 |
 | POST | `/api/admin/books/{id}/chapters` | 新增章节；`chapterNo` 省略时自动取 `MAX(chapter_no)+1` |
 | PUT | `/api/admin/chapters/{chapterId}` | 更新标题 / 正文 / VIP；字数自动重算 |
 | DELETE | `/api/admin/chapters/{chapterId}` | 删除章节并回写书籍统计 |
@@ -291,6 +295,19 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
   "timestamp": 1794887680000, "success": true }
 ```
 
+章节详情 `GET /api/admin/books/{id}/chapters/{chapterId}/detail` 返回：
+
+```json
+{ "code": 0, "message": "ok",
+  "data": { "bookId": "b_xxx", "bookName": "狼群", "author": "刺血",
+            "chapterId": "c_xxx", "chapterNo": 1, "title": "第一章 岩浆山洞",
+            "wordCount": 4435, "vip": 0, "updateTime": "2026-11-17 21:34:23",
+            "content": "章节正文……" },
+  "timestamp": 1794924126000, "success": true }
+```
+
+书籍或章节不存在时返回 `code=400`（`书籍不存在: xxx` / `章节不存在: xxx`）。该接口同样支持 `?adminToken=` 查询参数鉴权，供 `/chapter.html` 新窗口页面直接调用。
+
 ### 2.4 书源
 
 | 方法 | 路径 | 说明 |
@@ -306,7 +323,7 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 
 | 字段 | 必填 | 说明 |
 | --- | --- | --- |
-| file | 是 | TXT 文件，上限 64MB |
+| file | 是 | TXT 文件，业务上限 64MB（需整体读入内存解析，故与 APK 的 200MB 上限分开校验） |
 | bookName | 否 | 留空时先解析文件头（`书名：xxx` / `《xxx》`），再取首个标题前的短标题，最后退回文件名 |
 | author | 否 | 留空时先解析文件头 `作者：xxx`，再默认「佚名」 |
 | category | 否 | 默认「其他」 |
@@ -370,7 +387,46 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 
 省略字段时默认 `platform=android`、`forceUpdate=0`、`minVersionCode=0`、`enabled=1`。保存成功后返回落库后的完整记录。
 
-`downloadUrl` 只接受空值或以单个 `/` 开头的站内路径，否则返回 `400`：外部地址（如 `https://example.com/app.apk`）提示「下载地址只允许站内路径（以 / 开头）或留空」，协议相对地址（`//host/x.apk`）与含 `..`、反斜杠的路径也会被拒。
+`downloadUrl` 只接受空值或以单个 `/` 开头的站内路径，否则返回 `400`：外部地址（如 `https://example.com/app.apk`）提示「下载地址只允许站内路径（以 / 开头）或留空」，协议相对地址（`//host/x.apk`）与含 `..`、反斜杠的路径也会被拒。发版时推荐留空或填 `/api/v1/app/apk`，即由服务端分发最新上传的安装包。
+
+### 2.7 APK 安装包
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/admin/app/apk` | `multipart/form-data` 上传安装包，字段名 `file` |
+| GET | `/api/admin/app/apk/list` | 列出 `fyreader.apk-dir` 目录内的安装包，按修改时间倒序 |
+
+上传约束（实现见 `ApkStorageService`）：
+
+| 约束 | 说明 |
+| --- | --- |
+| 扩展名 | 仅 `.apk`（大小写不敏感），其余返回 `400`「只允许上传 .apk 安装包」 |
+| 大小 | 单个文件上限 200MB，超出返回 `400`「上传文件超过大小上限，安装包最大 200MB」 |
+| 文件名 | 剥离路径分隔符与 `\ / : * ? " < > \|`、控制字符，去掉隐藏前缀，主体截断至 96 字符后补 `.apk` |
+| 重名 | 不覆盖：同名文件改写为 `名称_yyyyMMdd_HHmmss.apk`，仍冲突则再加 `_2`、`_3` 序号 |
+| 落盘 | `fyreader.apk-dir`（默认 `./data/apk`），与 `GET /api/v1/app/apk` 读取目录一致 |
+
+上传响应：
+
+```json
+{ "code": 0, "message": "ok",
+  "data": { "fileName": "small.apk", "size": 4400, "sizeText": "4.3 KB",
+            "md5": "cbe793c09f2ab586694f699245d0a1a8",
+            "lastModified": 1794924125905, "downloadUrl": "/api/v1/app/apk" },
+  "timestamp": 1794924126000, "success": true }
+```
+
+列表响应 `data`：
+
+```json
+{ "total": 2, "downloadUrl": "/api/v1/app/apk",
+  "records": [ { "fileName": "small_20261117_220205.apk", "size": 4400, "sizeText": "4.3 KB",
+                 "lastModified": 1794924125905, "downloadUrl": "/api/v1/app/apk", "current": true },
+               { "fileName": "small.apk", "size": 4400, "sizeText": "4.3 KB",
+                 "lastModified": 1794924125905, "downloadUrl": "/api/v1/app/apk", "current": false } ] }
+```
+
+`current=true` 标记 `/api/v1/app/apk` 实际下发的包（按修改时间取最新），仅一条为真。
 
 ---
 
@@ -379,10 +435,11 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 打开 <http://127.0.0.1:8088/> 即为管理页面（根路径自动跳转 `/index.html`）。页面先显示管理口令输入框，口令校验通过（内部探测 `GET /api/admin/stats`）后才渲染管理界面并加载数据；所有请求自动携带 `X-Admin-Token`，口令失效或返回 401 时会退回登录页。含五个模块：
 
 - 书籍管理：关键词搜索、排序、分页、新增/编辑/删除、重算统计
-- 章节管理：选书后分页查看目录、编辑正文、新增/删除章节
+- 章节管理：选书后分页查看目录、编辑正文、新增/删除章节；点击章节标题或「查看」在新窗口打开 `/chapter.html?bookId=&chapterId=&adminToken=` 阅读正文（自带排版，口令失效时在页内重新输入）
 - 书源管理：元数据增删改
-- 版本发布：维护 App 更新检查返回的版本号 / 下载地址 / 更新说明，对应 `/api/v1/app/update`
+- 版本发布：维护 App 更新检查返回的版本号 / 下载地址 / 更新说明，对应 `/api/v1/app/update`；同页可上传 APK 安装包（带进度条，展示文件名/大小/MD5），并列出目录内已有安装包，一键把 `downloadUrl` 填成 `/api/v1/app/apk`
 - TXT 导入：上传文件并显示导入结果
 
 页面为纯原生 HTML + `fetch`，无构建步骤，直接放在 `src/main/resources/static/` 下随 jar 发布。
+*（内容由AI生成，仅供参考）*
 *（内容由AI生成，仅供参考）*
