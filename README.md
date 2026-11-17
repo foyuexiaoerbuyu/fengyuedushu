@@ -4,7 +4,7 @@
 
 本项目转自:https://github.com/fengyuecanzhu/FYReader
 
-目前仅作了本地化优化,切勿商用,原版权请征询作者后使用
+本项目基于 fengyuecanzhu/FYReader，遵循 GNU GPL v3.0 协议发布，详见 LICENSE 文件。
 
 ## 一、应用介绍
 
