@@ -48,14 +48,36 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .hint { color: #9aa1ae; font-size: 12px; margin-top: 6px; }
   #chapterTitle { font-weight: 600; font-size: 14px; margin: 0 0 4px; }
+  body.locked > header, body.locked > nav, body.locked > main { display: none; }
+  #loginMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #23283a; display: flex; align-items: center; justify-content: center; z-index: 99; }
+  #loginMask.hide { display: none; }
+  .login-box { background: #fff; border-radius: 10px; padding: 26px 24px; width: 360px; max-width: 90vw; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+  .login-box h2 { margin: 0 0 8px; font-size: 16px; }
+  .login-box .hint { margin: 0; }
+  .login-box input { width: 100%; margin: 10px 0 12px; border: 1px solid #d5d9e2; border-radius: 6px; padding: 8px 10px; font-size: 13px; outline: none; }
+  .login-box input:focus { border-color: #2f6feb; }
+  .login-box button { width: 100%; }
+  .login-msg { color: #c93434; font-size: 12px; min-height: 16px; margin: 10px 0 0; }
+  header .btn-logout { margin-left: auto; background: #323848; color: #dfe4ee; border: 1px solid #454c60; }
+  header .btn-logout:hover { color: #fff; border-color: #7d879f; }
 </style>
 </head>
-<body>
+<body class="locked">
+<div id="loginMask">
+  <div class="login-box">
+    <h2>服务端管理</h2>
+    <p class="hint">请输入管理口令（服务端 FYREADER_ADMIN_TOKEN），验证通过后才能进入管理界面。</p>
+    <input type="password" id="adminTokenInput" placeholder="管理口令" autocomplete="current-password">
+    <button class="btn primary" onclick="doLogin()">进入管理界面</button>
+    <p id="loginMsg" class="login-msg"></p>
+  </div>
+</div>
 <header>
   <h1>风月读书 · 服务端管理</h1>
   <span class="stat">书籍 <b id="statBooks">0</b></span>
   <span class="stat">章节 <b id="statChapters">0</b></span>
   <span class="stat">书源 <b id="statSources">0</b></span>
+  <button class="btn btn-logout" onclick="logout()">退出登录</button>
 </header>
 
 <nav>
@@ -336,8 +358,22 @@ function toast(msg, isError) {
   el._t = setTimeout(() => { el.className = ''; }, 2600);
 }
 
+const ADMIN_TOKEN_KEY = 'fy_admin_token';
+
+function getAdminToken() { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; }
+
 async function api(path, options) {
-  const res = await fetch(path, options);
+  const opts = Object.assign({}, options || {});
+  const headers = Object.assign({}, opts.headers || {});
+  const adminToken = getAdminToken();
+  if (adminToken) { headers['X-Admin-Token'] = adminToken; }
+  opts.headers = headers;
+  const res = await fetch(path, opts);
+  if (res.status === 401) {
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    showLogin('管理口令无效或已失效，请重新输入');
+    throw new Error('管理口令无效或已失效');
+  }
   let json;
   try { json = await res.json(); } catch (e) { throw new Error('返回内容不是 JSON（' + res.status + '）'); }
   if (json.code !== 0) { throw new Error(json.message || ('请求失败 ' + json.code)); }
@@ -803,10 +839,84 @@ async function saveVersion() {
   } catch (e) { toast(e.message, true); }
 }
 
-/* ---------- 启动 ---------- */
-loadStats();
-loadCategories();
-loadBooks(1);
+/* ---------- 管理口令登录 ---------- */
+let consoleStarted = false;
+
+function showLogin(msg) {
+  document.body.classList.add('locked');
+  document.getElementById('loginMask').classList.remove('hide');
+  document.getElementById('loginMsg').textContent = msg || '';
+  const input = document.getElementById('adminTokenInput');
+  input.value = '';
+  setTimeout(() => input.focus(), 30);
+}
+
+function hideLogin() {
+  document.getElementById('loginMask').classList.add('hide');
+  document.body.classList.remove('locked');
+}
+
+/* 用管理口令探一次统计接口：只有 code=0 才认为口令有效 */
+async function verifyAdminToken(token) {
+  try {
+    const res = await fetch('/api/admin/stats', { headers: { 'X-Admin-Token': token } });
+    if (res.status === 401) { return '管理口令不正确'; }
+    if (!res.ok) { return '服务端返回异常（' + res.status + '）'; }
+    let json;
+    try { json = await res.json(); } catch (e) { return '返回内容不是 JSON（' + res.status + '）'; }
+    if (json && json.code === 0) { return ''; }
+    return (json && json.message) || '管理口令校验失败';
+  } catch (e) {
+    return '无法连接服务端，请确认服务已启动';
+  }
+}
+
+function startConsole() {
+  if (consoleStarted) { return; }
+  consoleStarted = true;
+  loadStats();
+  loadCategories();
+  loadBooks(1);
+}
+
+async function doLogin() {
+  const input = document.getElementById('adminTokenInput');
+  const token = (input.value || '').trim();
+  const msg = document.getElementById('loginMsg');
+  if (!token) { msg.textContent = '请输入管理口令'; return; }
+  msg.textContent = '正在校验...';
+  const err = await verifyAdminToken(token);
+  if (err) { msg.textContent = err; return; }
+  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+  input.value = '';
+  hideLogin();
+  startConsole();
+}
+
+function logout() {
+  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  consoleStarted = false;
+  showLogin('已退出登录');
+}
+
+document.getElementById('adminTokenInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); doLogin(); }
+});
+
+/* 启动：先校验口令，通过后才加载数据，未通过不渲染管理界面 */
+(async function initAuth() {
+  showLogin('');
+  const saved = getAdminToken();
+  if (!saved) { return; }
+  const err = await verifyAdminToken(saved);
+  if (err) {
+    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    showLogin(err);
+    return;
+  }
+  hideLogin();
+  startConsole();
+})();
 </script>
 </body>
 </html>

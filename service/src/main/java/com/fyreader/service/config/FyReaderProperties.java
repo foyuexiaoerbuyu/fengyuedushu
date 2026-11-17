@@ -12,11 +12,14 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "fyreader")
 public class FyReaderProperties {
 
-    /** 是否开启 /api/v1/** 的 token 校验 */
+    /** 是否开启 /api/v1/** 的 token 校验（/api/admin/** 不受此开关影响，始终校验管理口令） */
     private boolean authEnabled = false;
 
-    /** 校验用 token，请求头 X-FY-Token */
+    /** 客户端 token，请求头 X-FY-Token；对应环境变量 FYREADER_TOKEN */
     private String token = "";
+
+    /** 管理端 token，请求头 X-Admin-Token；对应环境变量 FYREADER_ADMIN_TOKEN，为空时 /api/admin/** 一律拒绝 */
+    private String adminToken = "";
 
     /** 默认分页大小 */
     private int defaultPageSize = 20;

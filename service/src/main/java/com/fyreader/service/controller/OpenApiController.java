@@ -166,9 +166,11 @@ public class OpenApiController {
         // 低于 min_version_code 的客户端强制更新；客户端未上报版本号时以 force_update 为准
         boolean forceUpdate = forceFlag
                 || (clientVersionCode > 0 && minVersionCode > 0 && clientVersionCode < minVersionCode);
-        String downloadUrl = StringUtils.hasText(latest.getDownloadUrl())
-                ? latest.getDownloadUrl().trim()
-                : "/api/v1/app/apk";
+        // 下发前再规范化一次：只放行站内路径，其余一律回落到本服务的下载接口
+        String downloadUrl = normalizeDownloadUrl(latest.getDownloadUrl());
+        if (downloadUrl.isEmpty()) {
+            downloadUrl = "/api/v1/app/apk";
+        }
 
         data.put("hasUpdate", serverVersionCode > clientVersionCode);
         data.put("versionCode", serverVersionCode);
@@ -200,6 +202,22 @@ public class OpenApiController {
                 .contentLength(apk.length())
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(resource);
+    }
+
+    /**
+     * 下载地址白名单（读路径版）：只接受以单个 "/" 开头、不含反斜杠与 ".." 的站内路径，
+     * 其余（含 http(s):// 外部地址、协议相对地址）返回空串，由调用方回落到站内下载接口。
+     */
+    private String normalizeDownloadUrl(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return "";
+        }
+        String url = raw.trim();
+        if (!url.startsWith("/") || url.startsWith("//")
+                || url.contains("\\") || url.contains("..")) {
+            return "";
+        }
+        return url;
     }
 
     /** 取 apk 目录下最近修改的 .apk，无文件返回 null */

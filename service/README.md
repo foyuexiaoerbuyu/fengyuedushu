@@ -16,8 +16,9 @@ AIGC:
 - 技术栈：Spring Boot 2.7.18 + MyBatis 2.3.1 + H2 2.1.214（文件模式，`MODE=MySQL`）+ Lombok
 - JDK：1.8（本机 `JAVA_HOME=D:\01App\01dev\zip_jdk\jdk1.8.0_202`）
 - 端口：8088
-- 管理页面：<http://127.0.0.1:8088/>（原生 HTML + JS，无前端构建）
-- 数据文件：`./data/fyreader.mv.db`（首次启动自动执行 `schema.sql` / `data.sql`）
+- 管理页面：<http://127.0.0.1:8088/>（原生 HTML + JS，无前端构建；打开后需先输入管理口令 `FYREADER_ADMIN_TOKEN`，校验通过才加载管理数据）
+- 数据文件：`./data/fyreader.mv.db`（首次启动自动执行 `schema.sql` / `data.sql`，脚本全部幂等，重启不会覆盖已改数据）
+- APK 目录：`./data/apk`（放待发布的 apk，`/api/v1/app/apk` 取其中修改时间最新的一个）
 
 ## 目录结构
 
@@ -36,8 +37,8 @@ service/
     │   │   └── ApiResponseAdvice.java       Controller 返回值自动包装（免手写 Result.ok）
     │   ├── config/
     │   │   ├── FyReaderProperties.java      fyreader.* 配置绑定
-    │   │   ├── TokenInterceptor.java        /api/v1/** 可选 token 鉴权
-    │   │   └── WebConfig.java               拦截器、CORS、根路径跳转管理页
+    │   │   ├── TokenInterceptor.java        /api/v1/** 与 /api/admin/** 分流鉴权（X-FY-Token / X-Admin-Token）
+    │   │   └── WebConfig.java               拦截器注册与根路径跳转管理页（同源部署不开放 CORS）
     │   ├── controller/
     │   │   ├── OpenApiController.java       /api/v1/**  供 App 调用
     │   │   └── AdminApiController.java      /api/admin/** 供管理页面调用
@@ -70,12 +71,42 @@ java -jar target\fyreader-service.jar
 | --- | --- | --- |
 | `server.port` | 8088 | 服务端口 |
 | `spring.datasource.url` | `jdbc:h2:file:./data/fyreader;MODE=MySQL;DB_CLOSE_ON_EXIT=FALSE` | 文件库；注意 H2 2.1.214 不支持 `AUTO_SERVER=TRUE` 与 `DB_CLOSE_ON_EXIT=FALSE` 同时出现 |
-| `spring.h2.console.enabled` | true | 控制台 `/h2-console`，JDBC URL 同上，用户 `sa`、密码空 |
+| `spring.h2.console.enabled` | `${H2_CONSOLE_ENABLED:false}` | 默认关闭；本地排查时用 `H2_CONSOLE_ENABLED=true` 临时开启 `/h2-console` |
 | `spring.sql.init.mode` | always | 每次启动执行 schema/data（脚本均为幂等写法） |
-| `fyreader.auth-enabled` | false | 是否校验 `X-FY-Token` |
-| `fyreader.token` | `fyreader-lite-token` | 上述开关启用时要求的值，也支持 `?token=` |
+| `fyreader.auth-enabled` | `${FYREADER_AUTH_ENABLED:true}` | `/api/v1/**` 是否校验 `X-FY-Token`，默认开启 |
+| `fyreader.token` | `${FYREADER_TOKEN:}` | 客户端 token，请求头 `X-FY-Token`，也支持 `?token=`；为空时 `/api/v1/**` 一律 401 |
+| `fyreader.admin-token` | `${FYREADER_ADMIN_TOKEN:}` | 管理端口令，请求头 `X-Admin-Token`；为空时 `/api/admin/**` 一律 401 |
+| `spring.datasource.password` | `${H2_PASSWORD:}` | H2 密码，与部署环境变量保持一致；留空则沿用空口令 |
 | `fyreader.default-page-size` | 20 | 分页默认大小 |
 | `fyreader.max-page-size` | 200 | 分页上限，超出截断 |
+
+## 生产部署环境变量
+
+token 与数据库口令不再写死在 `application.yml`，部署前必须通过环境变量注入（Spring Boot 松散绑定：`FYREADER_ADMIN_TOKEN` → `fyreader.admin-token`）：
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `FYREADER_TOKEN` | 是 | 客户端 token，App 侧 `X-FY-Token` 与之保持一致 |
+| `FYREADER_ADMIN_TOKEN` | 是 | 管理页登录口令，同时用于 `/api/admin/**` |
+| `H2_PASSWORD` | 建议 | 数据库密码，需与建库时一致 |
+| `H2_CONSOLE_ENABLED` | 否 | 默认 `false`，仅本地排查时置 `true` |
+| `FYREADER_AUTH_ENABLED` | 否 | 默认 `true`；置 `false` 会让 `/api/v1/**` 完全不校验，不建议 |
+
+PowerShell 启动示例：
+
+```powershell
+$env:FYREADER_TOKEN='<客户端token>'
+$env:FYREADER_ADMIN_TOKEN='<管理口令>'
+$env:H2_PASSWORD='<数据库密码>'
+java -jar target\fyreader-service.jar
+```
+
+注意：
+
+- 改 `H2_PASSWORD` 前要先给库改密码（`ALTER USER SA SET PASSWORD '<新密码>'`），否则启动时连不上库。
+- 静态页面与接口同源部署，`WebConfig` 已移除全局放开 CORS；确需跨域请显式配置白名单。
+- `GET /api/v1/app/apk` 已加入拦截器 `excludePathPatterns`：App 用系统浏览器下载 APK，浏览器不会带自定义请求头，该接口必须免鉴权。
+- `POST /api/admin/app/version` 的 `downloadUrl` 只接受空值或以单个 `/` 开头的站内路径，外部地址会被拒绝，防止把更新下发改到第三方 APK。
 
 ## 数据表
 
@@ -116,6 +147,8 @@ GET /api/v1/books/{id}/chapters/no/{chapterNo}
 GET /api/v1/books/{id}/chapters/{chapterNo}/neighbor?direction=next|prev
 GET /api/v1/sources
 GET /api/v1/groups
+GET /api/v1/app/update?platform=android&versionCode=270
+GET /api/v1/app/apk               免鉴权，直接返回 APK 文件流
 ```
 
 管理端（`/api/admin`，供 `index.html` 使用）：
@@ -131,7 +164,10 @@ PUT    /api/admin/chapters/{chapterId}   DELETE /api/admin/chapters/{chapterId}
 GET    /api/admin/sources      POST /api/admin/sources
 PUT    /api/admin/sources/{id} DELETE /api/admin/sources/{id}
 POST   /api/admin/import/txt   multipart: file,bookName,author,category,encoding
+GET    /api/admin/app/version?platform=android   PUT /api/admin/app/version
 ```
+
+管理端所有接口都要带请求头 `X-Admin-Token: <FYREADER_ADMIN_TOKEN>`，与客户端 token 互不通用。
 
 统一响应（成功）：
 
@@ -158,6 +194,6 @@ POST   /api/admin/import/txt   multipart: file,bookName,author,category,encoding
 
 1. App 侧改造：新增 Retrofit/OkHttp 封装指向 `/api/v1`，移除 `third3.analyzeRule`、`third3.http` 的书源抓取分支，`SourceAnalyzer` 退化为只读接口列表
 2. 服务端补采集器（可选）：把书源抓取搬到服务端定时任务，App 彻底不接触规则与源站
-3. 换库：改 `spring.datasource` 为 MySQL，`schema.sql` 已是 MySQL 兼容语法，需替换 `MERGE INTO` 为 `INSERT ... ON DUPLICATE KEY UPDATE`
+3. 换库：改 `spring.datasource` 为 MySQL，`schema.sql` 已是 MySQL 兼容语法；初始化脚本已全部改为 `INSERT ... SELECT ... WHERE NOT EXISTS`，换库时等价替换为 `INSERT IGNORE` 即可
 4. 分页/排序：`BookQuery.sort` 走 `BookService.resolveOrderBy` 白名单，新增排序需在该方法注册
 *（内容由AI生成，仅供参考）*

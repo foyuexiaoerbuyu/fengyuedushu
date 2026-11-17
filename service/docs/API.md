@@ -53,8 +53,18 @@ Base URL：`http://127.0.0.1:8088`
 
 ### 0.3 鉴权
 
-`fyreader.auth-enabled=true` 时，`/api/v1/**` 需携带请求头 `X-FY-Token: <token>`（或查询参数 `?token=`）。
-`/api/admin/**` 与静态页面不受此开关影响，默认内网自用。
+鉴权由 `TokenInterceptor` 统一完成，按路径前缀分流，两套凭据互不通用：
+
+| 路径 | 凭据 | 说明 |
+| --- | --- | --- |
+| `/api/v1/**` | 请求头 `X-FY-Token: <FYREADER_TOKEN>`，或查询参数 `?token=` | 受 `fyreader.auth-enabled` 控制（默认 `true`）；`FYREADER_TOKEN` 未配置时一律 401 |
+| `/api/admin/**` | 请求头 `X-Admin-Token: <FYREADER_ADMIN_TOKEN>` | 始终校验，不受 `auth-enabled` 影响；未配置管理口令时一律 401 |
+
+例外与说明：
+
+- `GET /api/v1/app/apk` 不鉴权——App 用系统浏览器下载 APK，浏览器不会带自定义请求头。
+- 静态资源（`/`、`/index.html`）不鉴权，但页面加载后会先要求输入管理口令，校验通过才拉取数据、渲染管理界面。
+- 校验失败返回 `401` + `{"code":401,"message":"token 无效或缺失"}`（管理端为「管理口令无效或缺失」）。凭据比较走定长比较，避免时序侧信道。
 
 ### 0.4 时间与字段
 
@@ -221,6 +231,7 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 - `hasUpdate = 服务端最新 versionCode > 客户端 versionCode`
 - `forceUpdate = (force_update == 1) || (客户端 versionCode < min_version_code 且 min_version_code > 0)`
 - 版本记录中 `download_url` 为空时，接口自动返回 `/api/v1/app/apk`（客户端按 baseUrl 拼接为绝对地址）
+- 只下发站内路径：`download_url` 必须以单个 `/` 开头才会原样返回；配置成外部地址（`http://`、`https://`、`//host`）、含反斜杠或 `..` 时，一律回落到 `/api/v1/app/apk`
 - 无版本记录时返回 `hasUpdate=false`、`versionCode=0`，各字符串字段为空
 
 ### 1.12 下载最新 APK `GET /api/v1/app/apk`
@@ -345,11 +356,13 @@ App「关于 → 检查更新」的唯一数据源，由自建 fyreader-service 
 
 省略字段时默认 `platform=android`、`forceUpdate=0`、`minVersionCode=0`、`enabled=1`。保存成功后返回落库后的完整记录。
 
+`downloadUrl` 只接受空值或以单个 `/` 开头的站内路径，否则返回 `400`：外部地址（如 `https://example.com/app.apk`）提示「下载地址只允许站内路径（以 / 开头）或留空」，协议相对地址（`//host/x.apk`）与含 `..`、反斜杠的路径也会被拒。
+
 ---
 
 ## 3. 管理页面
 
-打开 <http://127.0.0.1:8088/> 即为管理页面（根路径自动跳转 `/index.html`），含五个模块：
+打开 <http://127.0.0.1:8088/> 即为管理页面（根路径自动跳转 `/index.html`）。页面先显示管理口令输入框，口令校验通过（内部探测 `GET /api/admin/stats`）后才渲染管理界面并加载数据；所有请求自动携带 `X-Admin-Token`，口令失效或返回 401 时会退回登录页。含五个模块：
 
 - 书籍管理：关键词搜索、排序、分页、新增/编辑/删除、重算统计
 - 章节管理：选书后分页查看目录、编辑正文、新增/删除章节

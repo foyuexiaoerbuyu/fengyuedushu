@@ -2,8 +2,10 @@
 target/
 !.mvn/wrapper/maven-wrapper.jar
 
-# H2 本地数据库文件
-data/
+# H2 本地数据库文件（data/apk 保留占位目录，用于存放待发布的 APK）
+data/**
+!data/apk/
+!data/apk/.gitkeep
 *.mv.db
 *.trace.db
 *.lock.db
