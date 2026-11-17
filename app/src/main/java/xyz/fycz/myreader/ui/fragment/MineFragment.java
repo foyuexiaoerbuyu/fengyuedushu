@@ -73,6 +73,7 @@ import xyz.fycz.myreader.ui.activity.DonateActivity;
 import xyz.fycz.myreader.ui.activity.LoginActivity;
 import xyz.fycz.myreader.ui.activity.MainActivity;
 import xyz.fycz.myreader.ui.activity.MoreSettingActivity;
+import xyz.fycz.myreader.ui.activity.ServerSettingActivity;
 import xyz.fycz.myreader.ui.activity.ReadRecordActivity;
 import xyz.fycz.myreader.ui.activity.UserInfoActivity;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
@@ -258,6 +259,9 @@ public class MineFragment extends BaseFragment {
                         return false;
                     }).setCancelButton(R.string.cancel);
         });
+
+        binding.mineRlServer.setOnClickListener(v ->
+                startActivity(new Intent(getActivity(), ServerSettingActivity.class)));
 
         binding.mineRlWebdav.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), MoreSettingActivity.class);

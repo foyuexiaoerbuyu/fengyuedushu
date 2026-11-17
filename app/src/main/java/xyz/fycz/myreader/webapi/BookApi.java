@@ -42,13 +42,31 @@ import xyz.fycz.myreader.webapi.crawler.base.BookInfoCrawler;
 import xyz.fycz.myreader.webapi.crawler.base.FindCrawler;
 import xyz.fycz.myreader.webapi.crawler.base.ReadCrawler;
 import xyz.fycz.myreader.webapi.crawler.read.TianLaiReadCrawler;
+import xyz.fycz.myreader.webapi.crawler.source.ServerCrawler;
 import xyz.fycz.myreader.webapi.crawler.source.ThirdCrawler;
 import xyz.fycz.myreader.webapi.crawler.source.find.ThirdFindCrawler;
+import xyz.fycz.myreader.webapi.server.ServerApi;
 
 import static xyz.fycz.myreader.util.utils.OkHttpUtils.getCookies;
 
 
 public class BookApi {
+
+    /**
+     * 当前请求是否应转交自建服务端（fyreader-service）处理。
+     * <p>
+     * 判定依据是「这本书 / 这个书源」本身带服务端标记，而不是全局开关，
+     * 这样服务端书源与普通网页书源可以并存、互不影响。
+     *
+     * @param book    当前书籍，可为 null
+     * @param crawler 当前书源对象，可为 null
+     */
+    private static boolean shouldUseServer(Book book, Object crawler) {
+        if (ServerCrawler.isServerBook(book)) {
+            return true;
+        }
+        return crawler instanceof ReadCrawler && ServerCrawler.isServer((ReadCrawler) crawler);
+    }
 
 
     /**
@@ -61,6 +79,9 @@ public class BookApi {
     }
 
     public static Observable<ConMVMap<SearchBookBean, Book>> search(String key, final ReadCrawler rc, ExecutorService searchPool) {
+        if (shouldUseServer(null, rc)) {
+            return ServerApi.search(key, 1);
+        }
         if (rc instanceof ThirdCrawler) {
             return ThirdSourceApi.searchByTC(key, (ThirdCrawler) rc, searchPool);
         }
@@ -108,6 +129,9 @@ public class BookApi {
      * @param book
      */
     public static Observable<Book> getBookInfo(final Book book, final BookInfoCrawler bic) {
+        if (shouldUseServer(book, bic)) {
+            return ServerApi.getBookInfo(book);
+        }
         if (bic instanceof ThirdCrawler) {
             return ThirdSourceApi.getBookInfoByTC(book, (ThirdCrawler) bic);
         }
@@ -129,6 +153,9 @@ public class BookApi {
      * @param book
      */
     public static Observable<List<Chapter>> getBookChapters(Book book, final ReadCrawler rc) {
+        if (shouldUseServer(book, rc)) {
+            return ServerApi.getChapterList(book);
+        }
         if (rc instanceof ThirdCrawler) {
             if (StringHelper.isEmpty(book.getChapterUrl())) {
                 return ThirdSourceApi.getBookInfoByTC(book, (ThirdCrawler) rc)
@@ -155,6 +182,9 @@ public class BookApi {
      * 获取章节正文
      */
     public static Observable<String> getChapterContent(Chapter chapter, Book book, final ReadCrawler rc) {
+        if (shouldUseServer(book, rc)) {
+            return ServerApi.getChapterContent(chapter, book);
+        }
         if (rc instanceof ThirdCrawler) {
             return ThirdSourceApi.getChapterContentByTC(chapter, book, (ThirdCrawler) rc);
         }
@@ -172,6 +202,9 @@ public class BookApi {
 
 
     public static Observable<List<Book>> findBooks(FindKind kind, FindCrawler findCrawler, int page) {
+        if (kind != null && ServerApi.isServerSource(kind.getUrl())) {
+            return ServerApi.findBooks(page);
+        }
         if (findCrawler instanceof ThirdFindCrawler) {
             return ThirdSourceApi.findBook(kind.getUrl(), (ThirdFindCrawler) findCrawler, page);
         }

@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_5da82539e23b11f1b140525400de85a5
+    ReservedCode1: BQ1zHzXm1JA6G8tJSrkJhSE2jMpcKU0qJbKWepvAmuvXyTeHgm1lk7hTm5oXfpHTO7bNjijcoYxkMPS7FnFcQhVSaVtVqFllF2V1tpyopH/7VVjey/zkfZ6XVI5RGuHdrBC/gcM4NnYK9SzFqUFrGSE2fcB2ZI8fzwxyA38dj90SMS8kTD3RdBlrymg=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_5da82539e23b11f1b140525400de85a5
+    ReservedCode2: BQ1zHzXm1JA6G8tJSrkJhSE2jMpcKU0qJbKWepvAmuvXyTeHgm1lk7hTm5oXfpHTO7bNjijcoYxkMPS7FnFcQhVSaVtVqFllF2V1tpyopH/7VVjey/zkfZ6XVI5RGuHdrBC/gcM4NnYK9SzFqUFrGSE2fcB2ZI8fzwxyA38dj90SMS8kTD3RdBlrymg=
+---
+
 # fyreader-service
 
 风月读书（fangyuedushu / FYReader）服务端。**用自建后端替代 App 内置的书源爬虫解析链路**：App 侧不再需要 `third3` 规则引擎 + `ThirdSourceApi` 抓取网页或解析源站，改为直接调用本服务的 REST 接口取「书籍列表 / 书籍详情 / 目录 / 章节正文」。
@@ -149,3 +160,4 @@ POST   /api/admin/import/txt   multipart: file,bookName,author,category,encoding
 2. 服务端补采集器（可选）：把书源抓取搬到服务端定时任务，App 彻底不接触规则与源站
 3. 换库：改 `spring.datasource` 为 MySQL，`schema.sql` 已是 MySQL 兼容语法，需替换 `MERGE INTO` 为 `INSERT ... ON DUPLICATE KEY UPDATE`
 4. 分页/排序：`BookQuery.sort` 走 `BookService.resolveOrderBy` 白名单，新增排序需在该方法注册
+*（内容由AI生成，仅供参考）*

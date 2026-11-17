@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_5e66f3f7e23b11f1b140525400de85a5
+    ReservedCode1: kRVKGpRcGG+XnJBF7w+C8wa6w0tKkNwvck4iSL2A9fwugSCse/j5diGrOtGJeNIhvZZ+L66uPm+/Z0BdaHeM36Q210z5IVcZboMecPDhUa7+a9IMbIZxsduXI9yIN94ZrMXz5IBwYtcHDCv0FGBMeEFD3OJRbuuf6ItCe+u0hzK8424GHZ4hmwRYbWg=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_5e66f3f7e23b11f1b140525400de85a5
+    ReservedCode2: kRVKGpRcGG+XnJBF7w+C8wa6w0tKkNwvck4iSL2A9fwugSCse/j5diGrOtGJeNIhvZZ+L66uPm+/Z0BdaHeM36Q210z5IVcZboMecPDhUa7+a9IMbIZxsduXI9yIN94ZrMXz5IBwYtcHDCv0FGBMeEFD3OJRbuuf6ItCe+u0hzK8424GHZ4hmwRYbWg=
+---
+
 # fyreader-service 接口文档
 
 Base URL：`http://127.0.0.1:8088`
@@ -277,3 +288,4 @@ Base URL：`http://127.0.0.1:8088`
 - TXT 导入：上传文件并显示导入结果
 
 页面为纯原生 HTML + `fetch`，无构建步骤，直接放在 `src/main/resources/static/` 下随 jar 发布。
+*（内容由AI生成，仅供参考）*

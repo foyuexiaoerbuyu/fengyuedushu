@@ -143,6 +143,29 @@ public class APPCONST {
 
     public static final String DEFAULT_WEB_DAV_URL = "https://dav.jianguoyun.com/dav/";
 
+    /********* 自建服务端（fyreader-service）相关 *********/
+    /**
+     * 服务端书源标识，写入 Book.source / BookSource.sourceUrl 用于分流
+     */
+    public static final String SERVER_SOURCE_TAG = "fyreader://server";
+    /**
+     * 服务端书源展示名称
+     */
+    public static final String SERVER_SOURCE_NAME = "本机书库";
+    /**
+     * 默认服务端地址。注意：Android 模拟器访问宿主机需用 10.0.2.2，
+     * 真机需改为 PC 的局域网 IP，可在应用内修改后覆盖此默认值。
+     */
+    public static final String DEFAULT_SERVER_BASE_URL = "http://10.0.2.2:8088";
+    /**
+     * 默认服务端访问令牌，对应后端 fyreader.token
+     */
+    public static final String DEFAULT_SERVER_TOKEN = "fyreader-lite-token";
+    /**
+     * 服务端 API 前缀
+     */
+    public static final String SERVER_API_PREFIX = "/api/v1";
+
 
     public static Type MAP_STRING = new TypeToken<Map<String, String>>() {
     }.getType();

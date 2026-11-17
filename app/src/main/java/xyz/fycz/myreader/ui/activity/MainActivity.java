@@ -61,6 +61,7 @@ import xyz.fycz.myreader.greendao.entity.BookGroup;
 import xyz.fycz.myreader.greendao.service.BookGroupService;
 import xyz.fycz.myreader.greendao.service.BookService;
 import xyz.fycz.myreader.model.sourceAnalyzer.BookSourceManager;
+import xyz.fycz.myreader.webapi.server.ServerSourceInstaller;
 import xyz.fycz.myreader.model.storage.BackupRestoreUi;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
 import xyz.fycz.myreader.ui.dialog.MyAlertDialog;
@@ -305,6 +306,8 @@ public class MainActivity extends BaseActivity<ActivityMainBinding> {
             e.printStackTrace();
         }
         firstInit();
+        // 注册「本机书库」书源（幂等：只会在首次启动时真正写入）
+        ServerSourceInstaller.ensureSource();
         LanZouApi.INSTANCE.checkSubscribeUpdate(this);
     }
 

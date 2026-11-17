@@ -34,9 +34,11 @@ import xyz.fycz.myreader.webapi.crawler.base.ReadCrawler;
 import xyz.fycz.myreader.webapi.crawler.read.FYReadCrawler;
 import xyz.fycz.myreader.webapi.crawler.source.JsonPathCrawler;
 import xyz.fycz.myreader.webapi.crawler.source.MatcherCrawler;
+import xyz.fycz.myreader.webapi.crawler.source.ServerCrawler;
 import xyz.fycz.myreader.webapi.crawler.source.Third3Crawler;
 import xyz.fycz.myreader.webapi.crawler.source.ThirdCrawler;
 import xyz.fycz.myreader.webapi.crawler.source.XpathCrawler;
+import xyz.fycz.myreader.webapi.server.ServerApi;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -197,6 +199,10 @@ public class ReadCrawlerUtil {
 
     public static ReadCrawler getReadCrawler(BookSource source, boolean isInfo) {
         try {
+            // 自建服务端书源：不做规则解析，直接交回服务端爬虫
+            if (source != null && ServerApi.isServerSource(source.getSourceUrl())) {
+                return ServerCrawler.getInstance();
+            }
             if (!StringHelper.isEmpty(source.getSourceType())) {
                 BaseSourceCrawler crawler;
                 switch (source.getSourceType()) {
