@@ -1,3 +1,14 @@
+---
+AIGC:
+    Label: "1"
+    ContentProducer: 001191440300708461136T1XGW3
+    ProduceID: 58e87cd5ac29bab7322874bd6b207f1c_7b2449aae2a211f1b140525400de85a5
+    ReservedCode1: bEbbzdausaYgUdYdvo/1DH/v4oUZ2H+pam2J5xJIxWOIAcLG3NChyF2FbEPVAsVTy0heV12jE/V3X8KE/5Ia7PGeMKqxogD6E8bA1FypliUhZL/3+QnZ19KPEEKzJGgfzP+nxNUV6W6LabNx2wo3SuOOOOLeIdgIPTDfADTZJoALRhxMTBjOQq1VF1M=
+    ContentPropagator: 001191440300708461136T1XGW3
+    PropagateID: 58e87cd5ac29bab7322874bd6b207f1c_7b2449aae2a211f1b140525400de85a5
+    ReservedCode2: bEbbzdausaYgUdYdvo/1DH/v4oUZ2H+pam2J5xJIxWOIAcLG3NChyF2FbEPVAsVTy0heV12jE/V3X8KE/5Ia7PGeMKqxogD6E8bA1FypliUhZL/3+QnZ19KPEEKzJGgfzP+nxNUV6W6LabNx2wo3SuOOOOLeIdgIPTDfADTZJoALRhxMTBjOQq1VF1M=
+---
+
 # 风月读书-FYReader
 
 ## 2022.12.27【此项目已停止维护❗❗❗】
@@ -98,3 +109,28 @@
         <td ><center><img src="https://gitlab.com/fengyuecanzhu/fyreader-resource/-/raw/main/img/FYReader/12.png" ></center></td>
     </tr>
 </table>
+
+## 六、界面截图
+
+以下截图均截取自本地自建服务端（`fyreader-service`）联调环境，图片以相对路径存放于项目根目录 `pic/` 下，移动端 App 与服务端管理后台可直接对照查看。
+
+### 6.1 移动端 App
+
+| 01 | 02 | 03 | 04 |
+| :---: | :---: | :---: | :---: |
+| <img src="pic/app/01_splash.png" width="260"><br>启动闪屏 | <img src="pic/app/02_bookshelf.png" width="260"><br>书架 | <img src="pic/app/03_discover_library.png" width="260"><br>发现·本机书库 | <img src="pic/app/04_book_detail.png" width="260"><br>书籍详情与目录 |
+
+| 05 | 06 | 07 | 08 |
+| :---: | :---: | :---: | :---: |
+| <img src="pic/app/05_reading.png" width="260"><br>阅读页 | <img src="pic/app/06_mine.png" width="260"><br>我的 | <img src="pic/app/07_server_settings.png" width="260"><br>服务设置 | <img src="pic/app/08_check_update.png" width="260"><br>检查更新 |
+
+### 6.2 服务端管理后台
+
+| 01 | 02 | 03 | 04 |
+| :---: | :---: | :---: | :---: |
+| <img src="pic/service/01-login.png" width="260"><br>管理口令登录 | <img src="pic/service/02-books.png" width="260"><br>书库列表 | <img src="pic/service/03-chapters.png" width="260"><br>章节列表 | <img src="pic/service/04-chapter-detail.png" width="260"><br>章节详情 |
+
+| 05 | 06 | 07 | 08 |
+| :---: | :---: | :---: | :---: |
+| <img src="pic/service/05-release.png" width="260"><br>版本发布 | <img src="pic/service/06-txt-import.png" width="260"><br>TXT 导入 | <img src="pic/service/07-sources.png" width="260"><br>书源管理 | <img src="pic/service/08-api-docs.png" width="260"><br>接口说明 |
+*（内容由AI生成，仅供参考）*
