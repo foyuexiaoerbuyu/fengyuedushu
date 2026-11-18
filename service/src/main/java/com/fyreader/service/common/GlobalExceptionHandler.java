@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
 
@@ -27,9 +28,15 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
-    public Result<Void> handleBusiness(BusinessException e) {
+    public Result<Void> handleBusiness(BusinessException e, HttpServletResponse response) {
         log.warn("业务异常: {}", e.getMessage());
-        return Result.fail(e.getCode(), e.getMessage());
+        // 401 / 403 / 404 需要体现在 HTTP 状态码上：客户端据此区分"未登录 / 登录失效"、
+        // "无权访问他人私有书"与普通参数错误，从而触发统一登录引导而不是裸报错。
+        int code = e.getCode();
+        if (code == 401 || code == 403 || code == 404) {
+            response.setStatus(code);
+        }
+        return Result.fail(code, e.getMessage());
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)

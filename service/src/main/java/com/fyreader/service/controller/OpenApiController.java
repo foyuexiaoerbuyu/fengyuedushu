@@ -74,19 +74,20 @@ public class OpenApiController {
      */
     @GetMapping("/books")
     public PageResult<Book> books(BookQuery query) {
-        return bookService.page(query);
+        // 可见性由 Service 依据当前身份强制收敛：匿名仅公开书，登录用户追加自己名下私有书
+        return bookService.pageForClient(query);
     }
 
-    /** 分类聚合列表，供 App 发现页生成分类 Tab */
+    /** 分类聚合列表，供 App 发现页生成分类 Tab（仅统计当前身份可见的书籍） */
     @GetMapping("/categories")
     public Map<String, Object> categories() {
-        return bookService.categories();
+        return bookService.categoriesForClient();
     }
 
-    /** 书籍详情 */
+    /** 书籍详情（私有书仅归属用户与部署者可读） */
     @GetMapping("/books/{id}")
     public Book book(@PathVariable("id") String id) {
-        return bookService.get(id);
+        return bookService.getReadable(id);
     }
 
     /** 章节目录（分页，默认不含正文） */

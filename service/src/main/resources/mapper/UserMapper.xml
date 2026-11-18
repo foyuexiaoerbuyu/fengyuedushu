@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.fyreader.service.mapper.UserMapper">
+
+    <sql id="Base_Column_List">
+        id, username, password_hash, nickname, status, create_time, update_time
+    </sql>
+
+    <select id="selectById" resultType="com.fyreader.service.entity.User">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_user
+        WHERE id = #{id}
+    </select>
+
+    <select id="selectByUsername" resultType="com.fyreader.service.entity.User">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_user
+        WHERE username = #{username}
+        LIMIT 1
+    </select>
+
+    <insert id="insert" parameterType="com.fyreader.service.entity.User">
+        INSERT INTO t_user (id, username, password_hash, nickname, status, create_time, update_time)
+        VALUES (#{id}, #{username}, #{passwordHash}, #{nickname},
+                <choose><when test="status != null">#{status}</when><otherwise>1</otherwise></choose>,
+                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE t_user SET status = #{status}, update_time = CURRENT_TIMESTAMP WHERE id = #{id}
+    </update>
+
+    <select id="countAll" resultType="long">
+        SELECT COUNT(1) FROM t_user
+    </select>
+
+</mapper>

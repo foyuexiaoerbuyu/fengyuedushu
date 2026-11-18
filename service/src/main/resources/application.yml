@@ -59,10 +59,22 @@ logging:
     com.fyreader.service.mapper: debug
 
 fyreader:
-  # 客户端接口鉴权开关，对应环境变量 FYREADER_AUTH_ENABLED；默认开启，无特殊需求不要关
+  # 客户端接口鉴权开关，对应环境变量 FYREADER_AUTH_ENABLED
+  # true（默认）：/api/v1/** 需要有效身份——匿名仅可读公开书，登录用户可读公开书+自己私有书，
+  #               共享口令（token）与登录 token 任一有效即可；仍需要鉴权的私有资源由业务层拒绝。
+  #               注意：health / app/apk / auth 登录注册接口已在 WebConfig 中放行，不受本开关影响。
+  # false：/api/v1/** 完全不校验，一律放行（仅本地调试使用）
   auth-enabled: ${FYREADER_AUTH_ENABLED:true}
-  # 客户端 token，请求头 X-FY-Token，对应环境变量 FYREADER_TOKEN；为空时 /api/v1/** 全部 401
+  # 共享访问口令，请求头 X-FY-Token，对应环境变量 FYREADER_TOKEN
+  # 携带该口令视为服务部署者本人（可读全部书籍，含他人私有书），用于保留旧版单机客户端
+  # 为空时该通道关闭，只能通过登录 token 访问
   token: ${FYREADER_TOKEN:}
+  # 是否允许自助注册，对应环境变量 FYREADER_ALLOW_REGISTER；关闭后仅已有账号可登录
+  allow-register: ${FYREADER_ALLOW_REGISTER:true}
+  # 登录会话有效期（天），对应环境变量 FYREADER_SESSION_DAYS
+  session-days: ${FYREADER_SESSION_DAYS:7}
+  # 密码最小长度，对应环境变量 FYREADER_PASSWORD_MIN_LENGTH
+  password-min-length: ${FYREADER_PASSWORD_MIN_LENGTH:6}
   # 管理端 token，请求头 X-Admin-Token，对应环境变量 FYREADER_ADMIN_TOKEN；为空时 /api/admin/** 全部 401
   admin-token: ${FYREADER_ADMIN_TOKEN:}
   # 单次接口默认分页大小

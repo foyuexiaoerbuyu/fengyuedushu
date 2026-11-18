@@ -35,6 +35,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.webkit.WebView;
 
@@ -68,6 +69,7 @@ import xyz.fycz.myreader.entity.Setting;
 import xyz.fycz.myreader.model.sourceAnalyzer.BookSourceManager;
 import xyz.fycz.myreader.model.user.User;
 import xyz.fycz.myreader.model.user.UserService;
+import xyz.fycz.myreader.ui.activity.ServerSettingActivity;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
 import xyz.fycz.myreader.ui.dialog.UpdateDialog;
 import xyz.fycz.myreader.util.SharedPreUtils;
@@ -113,6 +115,28 @@ public class App extends Application {
         initNightTheme();
 //        LLog.init(APPCONST.LOG_DIR);
         initDialogX();
+        initAuthExpiredBridge();
+    }
+
+    /**
+     * 注册服务端认证失效（401）回调。
+     *
+     * <p>token 过期、被服务端吊销或用户改了服务端口令时，所有业务请求都会 401。
+     * 这里统一在主线程提示一次并打开「本机书库」设置页（内含账号登录入口），
+     * 而不是让各业务界面各自抛一个 {@code IOException("HTTP 401：...")} 裸文案，
+     * 用户既看不懂也不知道该去哪里处理。</p>
+     */
+    private void initAuthExpiredBridge() {
+        ServerApi.setAuthExpiredCallback(() -> new Handler(Looper.getMainLooper()).post(() -> {
+            ToastUtils.showWarring("本机书库登录已失效，请重新登录");
+            try {
+                Intent intent = new Intent(App.this, ServerSettingActivity.class);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+            } catch (Exception ignored) {
+                // 后台进程或页面栈异常时只保留提示，不打断原有错误处理
+            }
+        }));
     }
 
 

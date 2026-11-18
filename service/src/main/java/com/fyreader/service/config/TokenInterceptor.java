@@ -1,8 +1,10 @@
 package com.fyreader.service.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fyreader.service.auth.AuthContext;
 import com.fyreader.service.common.Result;
 import com.fyreader.service.common.ResultCode;
+import com.fyreader.service.service.AuthService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -20,20 +22,25 @@ import java.security.MessageDigest;
  * <ul>
  *   <li>{@code /api/admin/**}：始终校验管理口令 X-Admin-Token（或 ?adminToken=），
  *       不受 auth-enabled 影响；管理口令未配置时一律拒绝，避免空口令放行。</li>
- *   <li>其余（{@code /api/v1/**}）：auth-enabled=true 时校验客户端 token X-FY-Token（或 ?token=）。</li>
+ *   <li>其余（{@code /api/v1/**}）：识别三级身份并写入 {@link AuthContext}——
+ *       匿名 / 登录用户 / 部署者（共享口令或管理口令），具体可见性由业务层判定。
+ *       health、app/apk、auth 登录注册等入口由 WebConfig 免鉴权放行。</li>
  * </ul>
  */
 @Component
 public class TokenInterceptor implements HandlerInterceptor {
 
     private static final String ADMIN_PREFIX = "/api/admin";
+    private static final String CLIENT_TOKEN_HEADER = "X-FY-Token";
 
     private final FyReaderProperties properties;
     private final ObjectMapper objectMapper;
+    private final AuthService authService;
 
-    public TokenInterceptor(FyReaderProperties properties, ObjectMapper objectMapper) {
+    public TokenInterceptor(FyReaderProperties properties, ObjectMapper objectMapper, AuthService authService) {
         this.properties = properties;
         this.objectMapper = objectMapper;
+        this.authService = authService;
     }
 
     @Override
@@ -54,27 +61,56 @@ public class TokenInterceptor implements HandlerInterceptor {
     private boolean checkAdmin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String adminToken = request.getHeader("X-Admin-Token");
         if (!StringUtils.hasText(adminToken)) {
+            // 管理后台是服务端托管的 HTML 页面，部分请求难以带自定义头，保留查询参数通道
             adminToken = request.getParameter("adminToken");
         }
         if (matches(properties.getAdminToken(), adminToken)) {
+            AuthContext.set(AuthContext.admin(adminToken));
             return true;
         }
         return reject(response, "管理口令无效或缺失");
     }
 
-    /** 客户端：auth-enabled=true 时才校验 */
+    /**
+     * 客户端三级身份：
+     * <ol>
+     *   <li>无 token → 匿名放行，业务层只返回公开书（visibility=PUBLIC）</li>
+     *   <li>token 命中共享口令 → 部署者身份，可读全部书籍（兼容旧版单机客户端）</li>
+     *   <li>token 命中登录会话 → 登录用户，可读公开书 + 自己名下私有书</li>
+     *   <li>token 存在但不匹配以上任一 → 401，提示重新登录</li>
+     * </ol>
+     * <p>注意：查询参数 ?token= 兜底已关闭，凭证只认请求头，避免 URL 泄露被日志/代理记录。</p>
+     */
     private boolean checkClient(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        String token = request.getHeader(CLIENT_TOKEN_HEADER);
         if (!properties.isAuthEnabled()) {
+            // 调试模式（auth-enabled=false）：一律放行，但若带了凭证仍尝试解析，便于"我的书籍"类接口工作
+            AuthContext ctx = StringUtils.hasText(token) ? authService.resolve(token) : null;
+            AuthContext.set(ctx == null ? AuthContext.anonymous() : ctx);
             return true;
         }
-        String token = request.getHeader("X-FY-Token");
         if (!StringUtils.hasText(token)) {
-            token = request.getParameter("token");
+            // 匿名访问：放行，由业务层按可见性收敛到公开书
+            AuthContext.set(AuthContext.anonymous());
+            return true;
         }
         if (matches(properties.getToken(), token)) {
+            AuthContext.set(AuthContext.admin(token));
             return true;
         }
-        return reject(response, "token 无效或缺失");
+        AuthContext ctx = authService.resolve(token);
+        if (ctx != null) {
+            AuthContext.set(ctx);
+            return true;
+        }
+        return reject(response, "token 无效或已过期，请重新登录");
+    }
+
+    @Override
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response,
+                                Object handler, Exception ex) {
+        // 线程池复用，必须清理，避免身份串号
+        AuthContext.clear();
     }
 
     /** 定长比较，避免逐字符短路比较带来的时序差异 */

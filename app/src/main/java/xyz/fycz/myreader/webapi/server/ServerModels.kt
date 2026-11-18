@@ -132,3 +132,32 @@ data class ServerAppUpdate(
         val splashImageUrl: String? = null,
         val splashImageMd5: String? = null
 )
+
+/**
+ * 服务端账号，对应后端 AuthService.toView() 的返回。
+ */
+data class ServerUser(
+        val id: String? = null,
+        val username: String? = null,
+        val nickname: String? = null,
+        val createTime: String? = null
+)
+
+/**
+ * 登录/注册响应，对应后端 /api/v1/auth/login 与 /api/v1/auth/register。
+ */
+data class ServerLoginResult(
+        val token: String? = null,
+        val expiresAt: Long? = null,
+        val expiresIn: Long? = null,
+        val user: ServerUser? = null
+)
+
+/**
+ * 服务端鉴权能力配置，对应后端 /api/v1/auth/config（免鉴权接口）。
+ */
+data class ServerAuthConfig(
+        val allowRegister: Boolean? = null,
+        val sessionDays: Int? = null,
+        val passwordMinLength: Int? = null
+)

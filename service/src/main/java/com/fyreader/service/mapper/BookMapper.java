@@ -34,6 +34,26 @@ public interface BookMapper {
 
     List<Book> selectAll();
 
-    /** 按分类聚合书籍数量，供发现页分类 Tab 与后台分类筛选使用 */
-    List<Map<String, Object>> selectCategoryStats();
+    /**
+     * 按分类聚合书籍数量（发现页分类 Tab 与后台分类筛选使用）。
+     *
+     * @param viewerId 查看者用户 ID，可为空
+     * @param enforce  是否按可见性过滤（公开书 + viewerId 名下私有书）
+     */
+    List<Map<String, Object>> selectCategoryStats(@Param("viewerId") String viewerId,
+                                                  @Param("enforce") boolean enforce);
+
+    /** 同归属用户下的同名书籍（用户重复上传同一本书时复用原书籍 ID） */
+    Book selectByNameAndOwner(@Param("name") String name, @Param("ownerId") String ownerId);
+
+    /** 某个用户名下的全部书籍（含私有），keyword 可按书名/作者模糊过滤 */
+    List<Book> selectByOwner(@Param("ownerId") String ownerId,
+                             @Param("keyword") String keyword,
+                             @Param("offset") int offset,
+                             @Param("limit") int limit);
+
+    long countByOwner(@Param("ownerId") String ownerId, @Param("keyword") String keyword);
+
+    /** 切换可见性（PUBLIC / PRIVATE） */
+    int updateVisibility(@Param("id") String id, @Param("visibility") String visibility);
 }

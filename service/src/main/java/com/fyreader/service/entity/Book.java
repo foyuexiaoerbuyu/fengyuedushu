@@ -17,6 +17,12 @@ public class Book implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    /** 可见性：公开 */
+    public static final String VISIBILITY_PUBLIC = "PUBLIC";
+
+    /** 可见性：私有 */
+    public static final String VISIBILITY_PRIVATE = "PRIVATE";
+
     /** 书籍 ID，客户端可直接使用（缺省时服务端生成 UUID） */
     private String id;
 
@@ -66,7 +72,25 @@ public class Book implements Serializable {
     /** 备注 */
     private String remark;
 
+    /** 归属用户 ID；为空表示系统 / 管理端书籍，任何登录用户都不拥有它 */
+    private String ownerId;
+
+    /**
+     * 可见性：{@link #VISIBILITY_PUBLIC} 公开（匿名可读）/
+     * {@link #VISIBILITY_PRIVATE} 私有（仅归属用户与部署者可读）。
+     * 存量书籍默认 PUBLIC。
+     */
+    private String visibility;
+
     private Date createTime;
 
     private Date updateTime;
+
+    public boolean isPublicVisibility() {
+        return visibility == null || VISIBILITY_PUBLIC.equalsIgnoreCase(visibility);
+    }
+
+    public boolean isOwnedBy(String userId) {
+        return userId != null && userId.equals(ownerId);
+    }
 }

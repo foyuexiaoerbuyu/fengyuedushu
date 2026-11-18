@@ -25,6 +25,18 @@ public class BookQuery implements Serializable {
     /** 来源名过滤 */
     private String sourceName;
 
+    /**
+     * 可见性过滤用的查看者用户 ID（仅内部赋值，客户端传参会被 Service 覆盖）。
+     * 为空且 visibilityOnly=true 时表示"只看公开书"。
+     */
+    private String viewerId;
+
+    /**
+     * 是否启用可见性过滤：客户端接口置 true（公开书 + viewerId 名下私有书），
+     * 管理端保持 null 表示全量可见。由 Service 强制写入，不接受前端直接控制。
+     */
+    private Boolean visibilityOnly;
+
     /** 排序：update_desc（默认）/ update_asc / name_asc / create_desc */
     private String sort;
 

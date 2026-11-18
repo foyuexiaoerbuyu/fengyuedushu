@@ -42,9 +42,23 @@ public class ImportService {
         this.chapterService = chapterService;
     }
 
+    /** 管理端导入：书籍无归属用户，默认公开（匿名可读） */
     @Transactional(rollbackFor = Exception.class)
     public ImportResult importTxt(MultipartFile file, String bookName, String author,
                                   String category, String encoding) {
+        return importTxt(file, bookName, author, category, encoding, null, Book.VISIBILITY_PUBLIC);
+    }
+
+    /**
+     * TXT 导入（带归属与可见性）。
+     *
+     * @param ownerId    归属用户 ID；为空表示管理端导入的系统书籍
+     * @param visibility PUBLIC / PRIVATE，为空按 PUBLIC 处理
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public ImportResult importTxt(MultipartFile file, String bookName, String author,
+                                  String category, String encoding,
+                                  String ownerId, String visibility) {
         if (file == null || file.isEmpty()) {
             throw BusinessException.badRequest("上传文件为空");
         }
@@ -97,7 +111,11 @@ public class ImportService {
         }
 
         // 4. 同名书籍复用 book_id，避免重导产生新书导致阅读进度丢失
-        Book existing = bookService.getByName(finalName);
+        //    用户级上传只在"自己名下"查重，不会覆盖他人或管理端导入的同名书
+        String targetVisibility = resolveVisibility(visibility);
+        Book existing = StringUtils.hasText(ownerId)
+                ? bookService.findOwnedBook(ownerId, finalName)
+                : bookService.getByName(finalName);
         Book book;
         boolean reused = existing != null;
         if (reused) {
@@ -109,6 +127,7 @@ public class ImportService {
             book.setSourceUrl("local-import");
             book.setRemark("TXT 导入，" + decoded.charsetName);
             book.setWordCount(formatWordCount(words));
+            book.setVisibility(targetVisibility);
             chapterService.deleteByBook(book.getId());
             bookService.update(book.getId(), book);
         } else {
@@ -121,6 +140,8 @@ public class ImportService {
             created.setSourceUrl("local-import");
             created.setRemark("TXT 导入，" + decoded.charsetName);
             created.setWordCount(formatWordCount(words));
+            created.setOwnerId(StringUtils.hasText(ownerId) ? ownerId : null);
+            created.setVisibility(targetVisibility);
             book = bookService.create(created);
         }
 
@@ -142,6 +163,15 @@ public class ImportService {
                 ? "导入成功：同名书籍已存在，已复用书籍 ID 并重建章节"
                 : "导入成功：已创建新书籍");
         return result;
+    }
+
+    /** 可见性归一：空值与非 PRIVATE 一律按 PUBLIC（存量兼容） */
+    private static String resolveVisibility(String visibility) {
+        if (!StringUtils.hasText(visibility)) {
+            return Book.VISIBILITY_PUBLIC;
+        }
+        return Book.VISIBILITY_PRIVATE.equalsIgnoreCase(visibility.trim())
+                ? Book.VISIBILITY_PRIVATE : Book.VISIBILITY_PUBLIC;
     }
 
     /** 字数描述：t_book.word_count 为展示用字符串字段 */

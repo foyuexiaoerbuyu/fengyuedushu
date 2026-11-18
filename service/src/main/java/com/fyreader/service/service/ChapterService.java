@@ -36,7 +36,8 @@ public class ChapterService {
 
     /** 分页取章节（默认不带正文） */
     public PageResult<Chapter> pageByBook(String bookId, Integer page, Integer size, boolean withContent) {
-        bookService.get(bookId);
+        // 读接口统一走可见性校验，禁止按 bookId 直读他人私有书
+        bookService.getReadable(bookId);
         int s = (size == null || size <= 0) ? properties.getDefaultPageSize()
                 : Math.min(size, properties.getMaxPageSize());
         int p = (page == null || page <= 0) ? 1 : page;
@@ -50,7 +51,7 @@ public class ChapterService {
 
     /** 全量目录（不含正文） */
     public List<Chapter> catalog(String bookId) {
-        bookService.get(bookId);
+        bookService.getReadable(bookId);
         long total = chapterMapper.countByBookId(bookId);
         if (total == 0) {
             return Collections.emptyList();
@@ -61,7 +62,7 @@ public class ChapterService {
     }
 
     public Chapter getContent(String bookId, String chapterId) {
-        bookService.get(bookId);
+        bookService.getReadable(bookId);
         Chapter chapter = chapterMapper.selectById(chapterId);
         if (chapter == null || !bookId.equals(chapter.getBookId())) {
             throw BusinessException.notFound("章节不存在: " + chapterId);
@@ -70,7 +71,7 @@ public class ChapterService {
     }
 
     public Chapter getByNo(String bookId, Integer chapterNo) {
-        bookService.get(bookId);
+        bookService.getReadable(bookId);
         Chapter chapter = chapterMapper.selectByBookAndNo(bookId, chapterNo);
         if (chapter == null) {
             throw BusinessException.notFound("章节不存在: 第 " + chapterNo + " 章");
@@ -80,7 +81,7 @@ public class ChapterService {
 
     /** direction: next / prev */
     public Chapter neighbor(String bookId, Integer chapterNo, String direction) {
-        bookService.get(bookId);
+        bookService.getReadable(bookId);
         String dir = "prev".equalsIgnoreCase(direction) ? "prev" : "next";
         return chapterMapper.selectNeighbor(bookId, chapterNo, dir);
     }

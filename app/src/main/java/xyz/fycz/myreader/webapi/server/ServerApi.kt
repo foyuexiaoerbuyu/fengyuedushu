@@ -22,8 +22,10 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import io.reactivex.Observable
 import io.reactivex.schedulers.Schedulers
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import xyz.fycz.myreader.common.APPCONST
 import xyz.fycz.myreader.entity.SearchBookBean
 import xyz.fycz.myreader.greendao.entity.Book
@@ -55,6 +57,54 @@ object ServerApi {
 
     private const val DEFAULT_PAGE_SIZE = 20
 
+    /** 服务端账号/共享口令请求头，与服务端 TokenInterceptor 约定一致。 */
+    const val TOKEN_HEADER = "X-FY-Token"
+
+    /** JSON 请求体类型。 */
+    private const val JSON_MEDIA_TYPE = "application/json; charset=utf-8"
+
+    /** 认证失效提示节流间隔：并发请求同时 401 时只提示一次。 */
+    private const val AUTH_EXPIRED_THROTTLE_MS = 10_000L
+
+    /** 认证失效状态码，服务端 HTTP 状态与业务 code 统一使用 401。 */
+    private const val HTTP_UNAUTHORIZED = 401
+
+    /**
+     * 认证失效回调：由 App 层注册，负责在主线程提示用户并引导到「本机书库」设置页登录。
+     */
+    interface AuthExpiredCallback {
+        fun onAuthExpired()
+    }
+
+    @Volatile
+    private var authExpiredCallback: AuthExpiredCallback? = null
+
+    @Volatile
+    private var lastAuthExpiredAt = 0L
+
+    /**
+     * 注册认证失效回调，传 null 解除注册。
+     */
+    @JvmStatic
+    fun setAuthExpiredCallback(callback: AuthExpiredCallback?) {
+        authExpiredCallback = callback
+    }
+
+    /**
+     * 触发认证失效回调（节流），异常不外抛，避免影响原始错误链路。
+     */
+    private fun notifyAuthExpired() {
+        val now = System.currentTimeMillis()
+        if (now - lastAuthExpiredAt < AUTH_EXPIRED_THROTTLE_MS) return
+        lastAuthExpiredAt = now
+        val callback = authExpiredCallback ?: return
+        try {
+            callback.onAuthExpired()
+        } catch (ignored: Exception) {
+            // 提示失败不影响调用方按 IOException 处理
+        }
+    }
+
     /** 服务端章节主键前缀（fycz-service 生成形如 `c_xxx` 的字符串主键）。 */
     private const val SERVER_CHAPTER_ID_PREFIX = "c_"
 
@@ -69,6 +119,9 @@ object ServerApi {
     private val typeChapter = object : TypeToken<ServerResult<ServerChapter>>() {}.type
     private val typeCategoryResult = object : TypeToken<ServerResult<ServerCategoryResult>>() {}.type
     private val typeAppUpdate = object : TypeToken<ServerResult<ServerAppUpdate>>() {}.type
+    private val typeLoginResult = object : TypeToken<ServerResult<ServerLoginResult>>() {}.type
+    private val typeUser = object : TypeToken<ServerResult<ServerUser>>() {}.type
+    private val typeAuthConfig = object : TypeToken<ServerResult<ServerAuthConfig>>() {}.type
 
     // ************************************************************
     // 对外接口
@@ -242,6 +295,86 @@ object ServerApi {
             checkAppUpdate(versionCode, platform).blockingFirst()
 
     // ************************************************************
+    // 账号（/api/v1/auth）
+    // ************************************************************
+
+    /**
+     * 服务端鉴权配置（是否开放注册、会话天数、密码最小长度），免鉴权接口。
+     */
+    @JvmStatic
+    fun authConfig(): Observable<ServerAuthConfig> = Observable.fromCallable {
+        val json = getJson("/auth/config", withToken = false)
+        parseResult<ServerAuthConfig>(json, typeAuthConfig)
+    }.subscribeOn(Schedulers.io())
+
+    /**
+     * 服务端账号登录。
+     *
+     * 登录成功后把服务端签发的 token 写入 [ServerConfig.setToken]，
+     * 之后所有业务请求继续走 [getJson] 里统一的 `X-FY-Token` 注入点，
+     * 不需要在调用方逐个传 token。
+     */
+    @JvmStatic
+    fun login(username: String, password: String): Observable<ServerUser> = Observable.fromCallable {
+        val params = HashMap<String, String>()
+        params["username"] = username
+        params["password"] = password
+        val json = postJson("/auth/login", gson.toJson(params), withToken = false)
+        val result: ServerLoginResult = parseResult(json, typeLoginResult)
+        val token = result.token
+        if (token.isNullOrEmpty()) {
+            throw IOException("服务端未返回登录令牌")
+        }
+        ServerConfig.setToken(token)
+        result.user ?: ServerUser(username = username)
+    }.subscribeOn(Schedulers.io())
+
+    /**
+     * 服务端账号注册，成功后同样直接获得登录态（token 已写入 [ServerConfig]）。
+     */
+    @JvmStatic
+    @JvmOverloads
+    fun register(username: String, password: String, nickname: String? = null): Observable<ServerUser> =
+            Observable.fromCallable {
+                val params = HashMap<String, String>()
+                params["username"] = username
+                params["password"] = password
+                if (!nickname.isNullOrBlank()) {
+                    params["nickname"] = nickname
+                }
+                val json = postJson("/auth/register", gson.toJson(params), withToken = false)
+                val result: ServerLoginResult = parseResult(json, typeLoginResult)
+                val token = result.token
+                if (token.isNullOrEmpty()) {
+                    throw IOException("服务端未返回登录令牌")
+                }
+                ServerConfig.setToken(token)
+                result.user ?: ServerUser(username = username)
+            }.subscribeOn(Schedulers.io())
+
+    /**
+     * 当前登录用户；token 失效时抛 [ServerAuthException]。
+     */
+    @JvmStatic
+    fun currentUser(): Observable<ServerUser> = Observable.fromCallable {
+        val json = getJson("/auth/me")
+        parseResult<ServerUser>(json, typeUser)
+    }.subscribeOn(Schedulers.io())
+
+    /**
+     * 退出登录：服务端吊销当前会话，客户端清空本地 token（不影响手工填写的共享口令场景）。
+     */
+    @JvmStatic
+    fun logout(): Observable<Boolean> = Observable.fromCallable {
+        try {
+            postJson("/auth/logout", "{}")
+        } finally {
+            ServerConfig.setToken("")
+        }
+        true
+    }.subscribeOn(Schedulers.io())
+
+    // ************************************************************
     // HTTP
     // ************************************************************
 
@@ -260,18 +393,50 @@ object ServerApi {
     @Throws(IOException::class)
     private fun getJson(path: String, withToken: Boolean = true,
                         client: OkHttpClient = OkHttpUtils.getOkHttpClient()): String {
-        val url = ServerConfig.apiUrl(path)
         val builder = Request.Builder()
-                .url(url)
+                .url(ServerConfig.apiUrl(path))
                 .get()
                 .addHeader("Accept", "application/json")
                 .addHeader("User-Agent", APPCONST.DEFAULT_USER_AGENT)
-        if (withToken) {
-            builder.addHeader("X-FY-Token", ServerConfig.getToken())
-        }
-        val response = client.newCall(builder.build()).execute()
+        appendToken(builder, withToken)
+        return execute(builder.build(), client)
+    }
+
+    @Throws(IOException::class)
+    private fun postJson(path: String, jsonBody: String, withToken: Boolean = true,
+                         client: OkHttpClient = OkHttpUtils.getOkHttpClient()): String {
+        val requestBody = jsonBody.toRequestBody(JSON_MEDIA_TYPE.toMediaType())
+        val builder = Request.Builder()
+                .url(ServerConfig.apiUrl(path))
+                .post(requestBody)
+                .addHeader("Accept", "application/json")
+                .addHeader("User-Agent", APPCONST.DEFAULT_USER_AGENT)
+        appendToken(builder, withToken)
+        return execute(builder.build(), client)
+    }
+
+    /**
+     * 注入访问凭证头。
+     *
+     * token 为空（纯匿名）时不发送该头，服务端按匿名身份只返回公开书；
+     * 显式发一个空值头只会让服务端日志更难排查，因此直接跳过。
+     */
+    private fun appendToken(builder: Request.Builder, withToken: Boolean) {
+        if (!withToken) return
+        val token = ServerConfig.getToken()
+        if (token.isNullOrEmpty()) return
+        builder.addHeader(TOKEN_HEADER, token)
+    }
+
+    @Throws(IOException::class)
+    private fun execute(request: Request, client: OkHttpClient): String {
+        val response = client.newCall(request).execute()
         response.use { resp ->
             val body = resp.body?.string() ?: ""
+            if (resp.code == HTTP_UNAUTHORIZED) {
+                notifyAuthExpired()
+                throw ServerAuthException("登录状态已失效，请重新登录：" + errorText(body))
+            }
             if (!resp.isSuccessful) {
                 throw IOException("HTTP ${resp.code}：${body.take(300)}")
             }
@@ -280,6 +445,19 @@ object ServerApi {
             }
             return body
         }
+    }
+
+    /**
+     * 从统一响应中提取错误说明；解析失败时退化为原始报文片段。
+     */
+    private fun errorText(body: String): String {
+        if (body.isBlank()) return "服务端未返回错误详情"
+        val message = try {
+            gson.fromJson(body, ServerResult::class.java)?.message
+        } catch (e: Exception) {
+            null
+        }
+        return (message ?: body).take(300)
     }
 
     // ************************************************************
@@ -295,6 +473,10 @@ object ServerApi {
         val result: ServerResult<T> = gson.fromJson(json, type)
                 ?: throw IOException("服务端返回内容无法解析")
         if (result.code != 0) {
+            if (result.code == HTTP_UNAUTHORIZED) {
+                notifyAuthExpired()
+                throw ServerAuthException("登录状态已失效，请重新登录：${result.message ?: "凭证无效"}")
+            }
             throw IOException("服务端返回错误 [${result.code}] ${result.message ?: "未知原因"}")
         }
         return result.data ?: throw IOException("服务端未返回数据")

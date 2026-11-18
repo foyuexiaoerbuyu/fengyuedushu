@@ -87,3 +87,42 @@ CREATE TABLE IF NOT EXISTS t_app_version (
 );
 
 CREATE INDEX IF NOT EXISTS idx_version_platform ON t_app_version(platform, version_code);
+
+-- ============================================================
+-- A+B 鉴权改造新增：用户表 + 登录会话表
+-- 说明：密码只存 BCrypt 摘要（$2a$ 格式，60 字符，留 100 余量）。
+--       username 唯一；status=1 启用、0 停用。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS t_user (
+    id            VARCHAR(64)  PRIMARY KEY,
+    username      VARCHAR(64)  NOT NULL,
+    password_hash VARCHAR(100) NOT NULL,
+    nickname      VARCHAR(64),
+    status        TINYINT      DEFAULT 1,
+    create_time   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    update_time   TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_user_username ON t_user(username);
+
+-- 会话表：短期 token（高熵随机串），落库可吊销；过期由业务层校验并顺带清理
+CREATE TABLE IF NOT EXISTS t_user_session (
+    token       VARCHAR(128) PRIMARY KEY,
+    user_id     VARCHAR(64)  NOT NULL,
+    expire_time TIMESTAMP    NOT NULL,
+    create_time TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_user ON t_user_session(user_id);
+
+-- ============================================================
+-- 书籍归属与可见性（幂等 DDL，可重复执行）
+-- owner_id 为空表示"系统/管理端书籍"；visibility 为 PUBLIC / PRIVATE
+-- 存量书籍默认 PUBLIC，保证改造上线后匿名用户仍可访问原有全部书籍
+-- ============================================================
+ALTER TABLE t_book ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64);
+ALTER TABLE t_book ADD COLUMN IF NOT EXISTS visibility VARCHAR(16) DEFAULT 'PUBLIC';
+
+UPDATE t_book SET visibility = 'PUBLIC' WHERE visibility IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_book_owner ON t_book(owner_id);

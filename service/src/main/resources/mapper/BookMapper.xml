@@ -6,7 +6,8 @@
     <sql id="Base_Column_List">
         id, name, author, cover_url, category, intro, status, word_count,
         latest_chapter_id, latest_chapter_name, chapter_count,
-        source_name, source_url, info_url, remark, create_time, update_time
+        source_name, source_url, info_url, remark, owner_id, visibility,
+        create_time, update_time
     </sql>
 
     <sql id="Query_Where">
@@ -24,6 +25,14 @@
                 </if>
                 <if test="q.sourceName != null and q.sourceName != ''">
                     AND source_name = #{q.sourceName}
+                </if>
+                <!-- 可见性收敛：visibilityOnly 由 Service 强制写入，前端无法关闭 -->
+                <if test="q.visibilityOnly != null and q.visibilityOnly">
+                    AND (visibility IS NULL OR visibility = 'PUBLIC'
+                    <if test="q.viewerId != null and q.viewerId != ''">
+                        OR owner_id = #{q.viewerId}
+                    </if>
+                    )
                 </if>
             </if>
         </where>
@@ -68,11 +77,16 @@
         INSERT INTO t_book (
             id, name, author, cover_url, category, intro, status, word_count,
             latest_chapter_id, latest_chapter_name, chapter_count,
-            source_name, source_url, info_url, remark, create_time, update_time
+            source_name, source_url, info_url, remark, owner_id, visibility,
+            create_time, update_time
         ) VALUES (
             #{id}, #{name}, #{author}, #{coverUrl}, #{category}, #{intro}, #{status}, #{wordCount},
             #{latestChapterId}, #{latestChapterName}, #{chapterCount},
-            #{sourceName}, #{sourceUrl}, #{infoUrl}, #{remark},
+            #{sourceName}, #{sourceUrl}, #{infoUrl}, #{remark}, #{ownerId},
+            <choose>
+                <when test="visibility != null and visibility != ''">#{visibility}</when>
+                <otherwise>'PUBLIC'</otherwise>
+            </choose>,
             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         )
     </insert>
@@ -94,6 +108,7 @@
             <if test="sourceUrl != null">source_url = #{sourceUrl},</if>
             <if test="infoUrl != null">info_url = #{infoUrl},</if>
             <if test="remark != null">remark = #{remark},</if>
+            <if test="visibility != null">visibility = #{visibility},</if>
             update_time = CURRENT_TIMESTAMP
         </set>
         WHERE id = #{id}
@@ -114,13 +129,59 @@
         WHERE id = #{bookId}
     </update>
 
-    <!-- 按分类聚合：发现页分类 Tab 与后台分类筛选用 -->
+    <!-- 按分类聚合：发现页分类 Tab 与后台分类筛选用；enforce=true 时按可见性收敛 -->
     <select id="selectCategoryStats" resultType="java.util.LinkedHashMap">
         SELECT category AS category, COUNT(1) AS cnt
         FROM t_book
         WHERE category IS NOT NULL AND category &lt;&gt; ''
+        <if test="enforce">
+            AND (visibility IS NULL OR visibility = 'PUBLIC'
+            <if test="viewerId != null and viewerId != ''">
+                OR owner_id = #{viewerId}
+            </if>
+            )
+        </if>
         GROUP BY category
         ORDER BY cnt DESC, category ASC
     </select>
+
+    <!-- 同归属用户下的同名书籍：用户重复上传同一本书时复用原书籍，仅合并自己名下的 -->
+    <select id="selectByNameAndOwner" resultType="com.fyreader.service.entity.Book">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book
+        WHERE name = #{name}
+          AND owner_id = #{ownerId}
+        ORDER BY update_time DESC
+        LIMIT 1
+    </select>
+
+    <!-- 我的书籍：包含私有，只按归属用户过滤 -->
+    <select id="selectByOwner" resultType="com.fyreader.service.entity.Book">
+        SELECT <include refid="Base_Column_List"/>
+        FROM t_book
+        WHERE owner_id = #{ownerId}
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%')
+                 OR author LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        ORDER BY update_time DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <select id="countByOwner" resultType="long">
+        SELECT COUNT(1)
+        FROM t_book
+        WHERE owner_id = #{ownerId}
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%')
+                 OR author LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <update id="updateVisibility">
+        UPDATE t_book
+        SET visibility = #{visibility}, update_time = CURRENT_TIMESTAMP
+        WHERE id = #{id}
+    </update>
 
 </mapper>

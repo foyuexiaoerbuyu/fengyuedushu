@@ -158,9 +158,12 @@ public class APPCONST {
      */
     public static final String DEFAULT_SERVER_BASE_URL = "http://10.0.2.2:8088";
     /**
-     * 默认服务端访问令牌，对应后端 fyreader.token
+     * 默认服务端访问令牌。
+     * <p>共享口令通道（后端 fyreader.token）默认已关闭，因此此处保持空串：
+     * 新装应用默认以匿名身份访问，只能读取公开书库；需要私有资源时由用户在
+     * 「服务端设置」里登录账号，由 /api/v1/auth/login 签发会话 token 后写入。
      */
-    public static final String DEFAULT_SERVER_TOKEN = "fyreader-lite-token";
+    public static final String DEFAULT_SERVER_TOKEN = "";
     /**
      * 服务端 API 前缀
      */

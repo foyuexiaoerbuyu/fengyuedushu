@@ -12,11 +12,24 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "fyreader")
 public class FyReaderProperties {
 
-    /** 是否开启 /api/v1/** 的 token 校验（/api/admin/** 不受此开关影响，始终校验管理口令） */
+    /** 是否开启 /api/v1/** 的身份校验（/api/admin/** 不受此开关影响，始终校验管理口令） */
     private boolean authEnabled = false;
 
-    /** 客户端 token，请求头 X-FY-Token；对应环境变量 FYREADER_TOKEN */
+    /**
+     * 共享访问口令，请求头 X-FY-Token；对应环境变量 FYREADER_TOKEN。
+     * <p>携带该口令视为服务部署者本人，可读取全部书籍（含他人私有书），用于兼容旧版单机客户端。
+     * 为空时该通道关闭，只能通过登录 token 访问。</p>
+     */
     private String token = "";
+
+    /** 是否允许自助注册；对应环境变量 FYREADER_ALLOW_REGISTER */
+    private boolean allowRegister = true;
+
+    /** 登录会话有效期（天）；对应环境变量 FYREADER_SESSION_DAYS */
+    private int sessionDays = 7;
+
+    /** 密码最小长度；对应环境变量 FYREADER_PASSWORD_MIN_LENGTH */
+    private int passwordMinLength = 6;
 
     /** 管理端 token，请求头 X-Admin-Token；对应环境变量 FYREADER_ADMIN_TOKEN，为空时 /api/admin/** 一律拒绝 */
     private String adminToken = "";

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>风月读书 · 公开书库</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Microsoft YaHei", Arial, sans-serif; background: #f5f6f8; color: #2c3038; font-size: 14px; }
+  header { background: #23283a; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .stat { font-size: 13px; color: #a9b1c7; }
+  header .topnav { display: flex; gap: 4px; margin-left: auto; }
+  header .topnav a { color: #c8cfdd; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; }
+  header .topnav a:hover { background: #323848; color: #fff; }
+  header .topnav a.active { background: #2f6feb; color: #fff; }
+  header .btn-logout { background: #323848; color: #dfe4ee; border: 1px solid #454c60; }
+  header .btn-logout:hover { color: #fff; border-color: #7d879f; }
+  main { padding: 20px 24px 48px; max-width: 1280px; margin: 0 auto; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  input[type=text], select { border: 1px solid #d5d9e2; border-radius: 6px; padding: 7px 10px; font-size: 13px; outline: none; background: #fff; }
+  input[type=text]:focus, select:focus { border-color: #2f6feb; }
+  button.btn { border: 1px solid #d5d9e2; background: #fff; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 13px; }
+  button.btn:hover { border-color: #2f6feb; color: #2f6feb; }
+  button.primary { background: #2f6feb; border-color: #2f6feb; color: #fff; }
+  button.primary:hover { background: #2359c4; color: #fff; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: 12px; }
+  .card { background: #fff; border-radius: 8px; padding: 14px 16px; box-shadow: 0 1px 2px rgba(0,0,0,.05); cursor: pointer; border: 1px solid transparent; }
+  .card:hover { border-color: #bcd0f7; box-shadow: 0 4px 14px rgba(47,111,235,.12); }
+  .card h3 { font-size: 15px; margin: 0 0 6px; line-height: 1.4; }
+  .card .meta { color: #6b7280; font-size: 12px; line-height: 1.7; }
+  .card .tag { display: inline-block; background: #eef3ff; color: #2f6feb; border-radius: 4px; padding: 1px 6px; font-size: 11px; margin-right: 6px; }
+  .card .tag.private { background: #fff3e6; color: #b26a00; }
+  .pager { margin-top: 16px; display: flex; gap: 10px; align-items: center; color: #6b7280; font-size: 13px; }
+  .empty { padding: 40px; text-align: center; color: #9aa1ae; background: #fff; border-radius: 8px; }
+  #toast { position: fixed; right: 20px; bottom: 20px; background: #23283a; color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 420px; }
+  #toast.show { opacity: .95; }
+  #toast.error { background: #c93434; }
+  .book-head { background: #fff; border-radius: 8px; padding: 16px 18px; margin-bottom: 14px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .book-head h2 { margin: 0 0 8px; font-size: 18px; }
+  .book-head .meta { color: #6b7280; font-size: 12px; }
+  .reader { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
+  .catalog { background: #fff; border-radius: 8px; padding: 8px; max-height: 72vh; overflow: auto; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .catalog .c-title { font-size: 12px; color: #9aa1ae; padding: 8px 10px; }
+  .catalog button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; color: #3f4756; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catalog button:hover { background: #f0f5ff; color: #2f6feb; }
+  .catalog button.active { background: #eef3ff; color: #2f6feb; font-weight: 600; }
+  .content { background: #fff; border-radius: 8px; padding: 22px 26px; min-height: 60vh; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .content h3 { margin: 0 0 14px; font-size: 17px; }
+  .content pre { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 15px; line-height: 1.9; margin: 0; }
+  .content .hint { color: #9aa1ae; font-size: 13px; }
+  @media (max-width: 860px) { .reader { grid-template-columns: 1fr; } .catalog { max-height: 260px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>风月读书 · 公开书库</h1>
+  <span class="stat" id="statInfo">匿名浏览（仅公开书）</span>
+  <div class="topnav">
+    <a href="/library.html" class="active">公开书库</a>
+    <a href="/user.html" id="navUser">登录 / 我的书架</a>
+    <a href="/index.html">管理后台</a>
+  </div>
+  <button class="btn btn-logout" id="btnLogout" style="display:none" onclick="doLogout()">退出登录</button>
+</header>
+
+<main>
+  <!-- 书库列表 -->
+  <div id="listView">
+    <div class="toolbar">
+      <input type="text" id="keyword" placeholder="书名 / 作者关键词" style="width:220px"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();loadBooks(1)}">
+      <select id="category" onchange="loadBooks(1)">
+        <option value="">全部分类</option>
+      </select>
+      <select id="sort" onchange="loadBooks(1)">
+        <option value="update_desc">最近更新</option>
+        <option value="name_asc">书名正序</option>
+        <option value="create_desc">最新入库</option>
+      </select>
+      <button class="btn primary" onclick="loadBooks(1)">搜索</button>
+      <button class="btn" onclick="resetFilter()">重置</button>
+    </div>
+    <div id="bookList" class="cards"></div>
+    <div class="pager">
+      <button class="btn" onclick="prevPage()">上一页</button>
+      <span id="pageInfo"></span>
+      <button class="btn" onclick="nextPage()">下一页</button>
+    </div>
+  </div>
+
+  <!-- 阅读视图 -->
+  <div id="detailView" style="display:none">
+    <div class="toolbar">
+      <button class="btn" onclick="backToList()">← 返回书库</button>
+    </div>
+    <div class="book-head">
+      <h2 id="bookTitle">-</h2>
+      <div class="meta" id="bookMeta"></div>
+    </div>
+    <div class="reader">
+      <aside class="catalog" id="catalog"><div class="c-title">加载目录…</div></aside>
+      <article class="content" id="content"><p class="hint">从左侧目录选择章节开始阅读。</p></article>
+    </div>
+  </div>
+</main>
+
+<div id="toast"></div>
+<script>
+const TOKEN_KEY = 'fy_user_token';
+const state = { page: 1, size: 20, total: 0, pages: 1, bookId: '', chapterId: '' };
+
+function token() { return localStorage.getItem(TOKEN_KEY) || ''; }
+function setToken(t) { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); }
+function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function toast(msg, isError) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (isError ? ' error' : '');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+async function api(path, options) {
+  const opts = Object.assign({}, options || {});
+  const headers = Object.assign({}, opts.headers || {});
+  const t = token();
+  if (t) headers['X-FY-Token'] = t;
+  opts.headers = headers;
+  const res = await fetch(path, opts);
+  let json;
+  try { json = await res.json(); } catch (e) { throw new Error('返回内容不是 JSON（' + res.status + '）'); }
+  if (res.status === 401 || json.code === 401) {
+    setToken('');
+    renderIdentity();
+    throw new Error(json.message || '登录已失效，请重新登录');
+  }
+  if (json.code !== 0) { throw new Error(json.message || ('请求失败 ' + json.code)); }
+  return json.data;
+}
+
+async function renderIdentity() {
+  const stat = document.getElementById('statInfo');
+  const btn = document.getElementById('btnLogout');
+  if (!token()) {
+    stat.textContent = '匿名浏览（仅公开书）';
+    btn.style.display = 'none';
+    document.getElementById('navUser').textContent = '登录 / 我的书架';
+    return;
+  }
+  try {
+    const me = await api('/api/v1/auth/me');
+    const name = me.nickname || me.username;
+    stat.textContent = '已登录：' + name + (me.admin ? '（部署者）' : '') + '，可读自己的私有书';
+    btn.style.display = '';
+    document.getElementById('navUser').textContent = '我的书架';
+  } catch (e) {
+    stat.textContent = '匿名浏览（仅公开书）';
+    btn.style.display = 'none';
+  }
+}
+
+function resetFilter() {
+  document.getElementById('keyword').value = '';
+  document.getElementById('category').value = '';
+  document.getElementById('sort').value = 'update_desc';
+  loadBooks(1);
+}
+
+async function loadCategories() {
+  const sel = document.getElementById('category');
+  try {
+    const d = await api('/api/v1/categories');
+    const items = (d && d.items) || [];
+    sel.innerHTML = '<option value="">全部分类</option>' + items.map(it =>
+      `<option value="${esc(it.category)}">${esc(it.category)}（${it.count}）</option>`).join('');
+  } catch (e) { /* 分类失败不影响主列表 */ }
+}
+
+async function loadBooks(page) {
+  if (page) state.page = page;
+  const kw = document.getElementById('keyword').value.trim();
+  const category = document.getElementById('category').value;
+  const sort = document.getElementById('sort').value;
+  const qs = new URLSearchParams({ page: state.page, size: state.size, sort });
+  if (kw) qs.set('keyword', kw);
+  if (category) qs.set('category', category);
+  const box = document.getElementById('bookList');
+  box.innerHTML = '<div class="empty">加载中…</div>';
+  try {
+    const d = await api('/api/v1/books?' + qs.toString());
+    state.total = d.total || 0;
+    state.pages = d.pages || 1;
+    const records = d.records || [];
+    if (!records.length) {
+      box.innerHTML = '<div class="empty">没有匹配的书籍</div>';
+    } else {
+      box.innerHTML = records.map(b => `
+        <div class="card" onclick="openBook('${esc(b.id)}')">
+          <h3>${esc(b.name)}</h3>
+          <div class="meta">
+            <span class="tag${b.visibility === 'PRIVATE' ? ' private' : ''}">${b.visibility === 'PRIVATE' ? '私有' : '公开'}</span>
+            ${esc(b.category || '未分类')}<br>
+            作者：${esc(b.author || '佚名')}<br>
+            章节：${b.chapterCount == null ? '-' : b.chapterCount} · ${esc(b.wordCount || '-')}<br>
+            更新：${esc((b.updateTime || '').replace('T', ' ').substring(0, 16))}
+          </div>
+        </div>`).join('');
+    }
+    document.getElementById('pageInfo').textContent = `第 ${d.page || 1} / ${state.pages} 页 · 共 ${state.total} 本`;
+  } catch (e) {
+    box.innerHTML = '<div class="empty">加载失败：' + esc(e.message) + '</div>';
+  }
+}
+
+function prevPage() { if (state.page > 1) loadBooks(state.page - 1); }
+function nextPage() { if (state.page < state.pages) loadBooks(state.page + 1); }
+
+async function openBook(bookId) {
+  state.bookId = bookId;
+  state.chapterId = '';
+  document.getElementById('listView').style.display = 'none';
+  document.getElementById('detailView').style.display = '';
+  document.getElementById('catalog').innerHTML = '<div class="c-title">加载目录…</div>';
+  document.getElementById('content').innerHTML = '<p class="hint">从左侧目录选择章节开始阅读。</p>';
+  try {
+    const book = await api('/api/v1/books/' + encodeURIComponent(bookId));
+    document.getElementById('bookTitle').textContent = book.name || '-';
+    document.getElementById('bookMeta').innerHTML =
+      `${book.visibility === 'PRIVATE' ? '<span class="tag private">私有</span>' : '<span class="tag">公开</span>'}
+       作者：${esc(book.author || '佚名')} ｜ 分类：${esc(book.category || '未分类')} ｜
+       章节：${book.chapterCount == null ? '-' : book.chapterCount} ｜ 字数：${esc(book.wordCount || '-')} ｜
+       状态：${esc(book.status || '-')}`;
+    const list = await api('/api/v1/books/' + encodeURIComponent(bookId) + '/catalog');
+    renderCatalog(bookId, list || []);
+  } catch (e) {
+    document.getElementById('catalog').innerHTML = '<div class="c-title">目录加载失败</div>';
+    toast(e.message, true);
+  }
+}
+
+function renderCatalog(bookId, chapters) {
+  const box = document.getElementById('catalog');
+  if (!chapters.length) { box.innerHTML = '<div class="c-title">暂无章节</div>'; return; }
+  box.innerHTML = `<div class="c-title">共 ${chapters.length} 章</div>` + chapters.map(c =>
+    `<button data-cid="${esc(c.id)}" title="${esc(c.title)}" onclick="openChapter('${esc(bookId)}','${esc(c.id)}',this)">${esc(c.title)}</button>`
+  ).join('');
+  openChapter(bookId, chapters[0].id, box.querySelector('button'));
+}
+
+async function openChapter(bookId, chapterId, btn) {
+  state.chapterId = chapterId;
+  document.querySelectorAll('#catalog button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const pane = document.getElementById('content');
+  pane.innerHTML = '<p class="hint">加载中…</p>';
+  try {
+    const c = await api('/api/v1/books/' + encodeURIComponent(bookId) + '/chapters/' + encodeURIComponent(chapterId));
+    pane.innerHTML = `<h3>${esc(c.title)}</h3><pre>${esc(c.content || '（本章暂无正文）')}</pre>`;
+    pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    pane.innerHTML = '<p class="hint">加载失败：' + esc(e.message) + '</p>';
+  }
+}
+
+function backToList() {
+  document.getElementById('detailView').style.display = 'none';
+  document.getElementById('listView').style.display = '';
+}
+
+async function doLogout() {
+  try { await api('/api/v1/auth/logout', { method: 'POST' }); } catch (e) { /* 忽略登出失败 */ }
+  setToken('');
+  await renderIdentity();
+  toast('已退出登录，当前为匿名浏览');
+  loadBooks(1);
+  loadCategories();
+}
+
+(async function init() {
+  await renderIdentity();
+  loadCategories();
+  loadBooks(1);
+  // 支持 /library.html?book=<id> 直达某本书（「我的书架」阅读入口）
+  const direct = new URLSearchParams(location.search).get('book');
+  if (direct) openBook(direct);
+})();
+</script>
+</body>
+</html>

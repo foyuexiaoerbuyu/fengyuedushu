@@ -76,14 +76,16 @@ public final class ServerConfig {
     }
 
     /**
-     * 访问令牌，对应后端 fyreader.token；后端关闭鉴权时该值不会被校验。
+     * 访问令牌，对应后端 fyreader.token（共享口令）或 /api/v1/auth/login 签发的会话 token。
+     *
+     * <p>未配置时返回空串，表示「匿名」：请求不带 X-FY-Token，服务端按匿名身份只返回公开书。
+     * 早期版本在这里回退到硬编码口令 {@code fyreader-lite-token}，而服务端未配置同一口令时
+     * 会把这个未知 token 判为无效并返回 401，导致未登录用户连公开书都读不了；
+     * 因此改为匿名优先，需要共享口令或账号 token 时由设置页/登录明确写入。</p>
      */
     public static String getToken() {
         String token = prefs().getString(KEY_SERVER_TOKEN, null);
-        if (TextUtils.isEmpty(token)) {
-            token = APPCONST.DEFAULT_SERVER_TOKEN;
-        }
-        return token;
+        return token == null ? "" : token.trim();
     }
 
     public static void setToken(String token) {

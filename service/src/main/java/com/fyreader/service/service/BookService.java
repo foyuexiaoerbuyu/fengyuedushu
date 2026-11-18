@@ -1,5 +1,6 @@
 package com.fyreader.service.service;
 
+import com.fyreader.service.auth.AuthContext;
 import com.fyreader.service.common.BusinessException;
 import com.fyreader.service.common.PageResult;
 import com.fyreader.service.config.FyReaderProperties;
@@ -34,11 +35,20 @@ public class BookService {
     }
 
     /**
-     * 分类聚合：返回 { total: 书籍总数, items: [{category, count}] }。
-     * App 发现页据此生成「全部书籍 + 各分类」Tab，后台据此渲染分类筛选下拉。
+     * 分类聚合（管理端 / 部署者视角，全量统计）：
+     * 返回 { total: 书籍总数, items: [{category, count}] }。
      */
     public Map<String, Object> categories() {
-        List<Map<String, Object>> rows = bookMapper.selectCategoryStats();
+        return buildCategories(null, false);
+    }
+
+    /** 分类聚合（客户端视角）：只统计当前身份可见的书籍，匿名仅公开书 */
+    public Map<String, Object> categoriesForClient() {
+        return buildCategories(AuthContext.currentUserId(), true);
+    }
+
+    private Map<String, Object> buildCategories(String viewerId, boolean enforce) {
+        List<Map<String, Object>> rows = bookMapper.selectCategoryStats(viewerId, enforce);
         List<Map<String, Object>> items = new java.util.ArrayList<>();
         long total = 0L;
         for (Map<String, Object> row : rows) {
@@ -139,6 +149,110 @@ public class BookService {
         get(id);
         chapterMapper.deleteByBookId(id);
         bookMapper.deleteById(id);
+    }
+
+    // ------------------------------------------------------------------
+    // 可见性与归属：客户端读接口、用户级写接口统一走这里，避免"列表过滤但详情可按 ID 直读"
+    // ------------------------------------------------------------------
+
+    /** 客户端书籍列表：强制按当前身份收敛可见性，前端传 viewerId/visibilityOnly 一律被覆盖 */
+    public PageResult<Book> pageForClient(BookQuery query) {
+        BookQuery q = query == null ? new BookQuery() : query;
+        q.setVisibilityOnly(Boolean.TRUE);
+        q.setViewerId(AuthContext.currentUserId());
+        return page(q);
+    }
+
+    /**
+     * 客户端读取单本书（详情 / 目录 / 正文的统一入口）。
+     * 不可见时抛 403，避免通过书籍 ID 直读他人私有书。
+     */
+    public Book getReadable(String id) {
+        Book book = get(id);
+        assertReadable(book);
+        return book;
+    }
+
+    /** 读权限校验：部署者全放行；公开书放行；私有书仅归属用户可读 */
+    public void assertReadable(Book book) {
+        if (book == null) {
+            throw BusinessException.notFound("书籍不存在");
+        }
+        AuthContext ctx = AuthContext.current();
+        if (ctx.isAdmin()) {
+            return;
+        }
+        if (book.isPublicVisibility()) {
+            return;
+        }
+        String userId = ctx.getUserId();
+        if (userId != null && book.isOwnedBy(userId)) {
+            return;
+        }
+        throw new BusinessException(403, "无权访问该书籍：这是他人的私有书籍");
+    }
+
+    /** 写权限校验：部署者全放行；登录用户仅能操作自己名下的书，匿名一律拒绝 */
+    public void assertWritable(Book book) {
+        if (book == null) {
+            throw BusinessException.notFound("书籍不存在");
+        }
+        AuthContext ctx = AuthContext.current();
+        if (ctx.isAdmin()) {
+            return;
+        }
+        String userId = ctx.getUserId();
+        if (userId == null) {
+            throw new BusinessException(401, "请先登录后再操作");
+        }
+        if (book.isOwnedBy(userId)) {
+            return;
+        }
+        throw new BusinessException(403, "无权操作他人的书籍");
+    }
+
+    /** 我的书籍：只按归属用户过滤，含私有书 */
+    public PageResult<Book> pageMine(String ownerId, String keyword, Integer pageNum, Integer sizeNum) {
+        if (!StringUtils.hasText(ownerId)) {
+            throw new BusinessException(401, "请先登录后再查看我的书籍");
+        }
+        int size = (sizeNum == null || sizeNum <= 0) ? properties.getDefaultPageSize()
+                : Math.min(sizeNum, properties.getMaxPageSize());
+        int page = (pageNum == null || pageNum <= 0) ? 1 : pageNum;
+        long total = bookMapper.countByOwner(ownerId, keyword);
+        if (total == 0) {
+            return PageResult.empty(page, size);
+        }
+        List<Book> records = bookMapper.selectByOwner(ownerId, keyword, (page - 1) * size, size);
+        return new PageResult<>(records, total, page, size);
+    }
+
+    /** 切换可见性：PUBLIC / PRIVATE，非法值统一按私有处理（更安全） */
+    @Transactional(rollbackFor = Exception.class)
+    public Book switchVisibility(String id, String visibility) {
+        Book book = get(id);
+        assertWritable(book);
+        String target = Book.VISIBILITY_PUBLIC.equalsIgnoreCase(visibility)
+                ? Book.VISIBILITY_PUBLIC : Book.VISIBILITY_PRIVATE;
+        bookMapper.updateVisibility(id, target);
+        return bookMapper.selectById(id);
+    }
+
+    /** 删除自己的书（含章节级联），非本人名下的书拒绝 */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteOwned(String id) {
+        Book book = get(id);
+        assertWritable(book);
+        chapterMapper.deleteByBookId(id);
+        bookMapper.deleteById(id);
+    }
+
+    /** 某用户名下的同名书籍，命中则复用原书籍 ID，避免误覆盖他人同名书 */
+    public Book findOwnedBook(String ownerId, String name) {
+        if (!StringUtils.hasText(ownerId) || !StringUtils.hasText(name)) {
+            return null;
+        }
+        return bookMapper.selectByNameAndOwner(name.trim(), ownerId);
     }
 
     /** 依据章节表回写章节总数与最新章节 */
