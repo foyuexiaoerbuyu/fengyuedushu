@@ -22,8 +22,11 @@ public class FyReaderProperties {
      */
     private String token = "";
 
-    /** 是否允许自助注册；对应环境变量 FYREADER_ALLOW_REGISTER */
-    private boolean allowRegister = true;
+    /** 是否允许自助注册；对应环境变量 FYREADER_ALLOW_REGISTER，默认关闭，账号由管理员在后台开通 */
+    private boolean allowRegister = false;
+
+    /** 引导创建的管理员用户名；对应环境变量 FYREADER_ADMIN_USERNAME，默认 admin */
+    private String adminUsername = "admin";
 
     /** 登录会话有效期（天）；对应环境变量 FYREADER_SESSION_DAYS */
     private int sessionDays = 7;

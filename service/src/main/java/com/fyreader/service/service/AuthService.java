@@ -75,6 +75,7 @@ public class AuthService {
         }
         user.setNickname(nick);
         user.setStatus(User.STATUS_ENABLED);
+        user.setRole(User.ROLE_USER);
         userMapper.insert(user);
         return issueToken(userMapper.selectById(user.getId()));
     }
@@ -130,7 +131,9 @@ public class AuthService {
             sessionMapper.deleteByToken(token);
             return null;
         }
-        return AuthContext.ofUser(user.getId(), user.getUsername(), token);
+        return user.isAdmin()
+                ? AuthContext.ofAdminUser(user.getId(), user.getUsername(), token)
+                : AuthContext.ofUser(user.getId(), user.getUsername(), token);
     }
 
     /** 当前 token 对应的用户（/me 用），无效则抛 401 */
@@ -157,9 +160,144 @@ public class AuthService {
         view.put("id", user.getId());
         view.put("username", user.getUsername());
         view.put("nickname", StringUtils.hasText(user.getNickname()) ? user.getNickname() : user.getUsername());
+        view.put("role", StringUtils.hasText(user.getRole()) ? user.getRole() : User.ROLE_USER);
+        view.put("status", user.getStatus());
         view.put("createTime", user.getCreateTime());
+        view.put("admin", user.isAdmin());
         return view;
     }
+
+    // ================= 密码与账号管理 =================
+
+    /**
+     * 修改自己的密码：校验旧密码 → 校验新密码强度 → 落库 → 吊销其他会话（当前会话保留）。
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void changePassword(String token, String oldPassword, String newPassword) {
+        User user = requireUser(token);
+        if (!StringUtils.hasText(oldPassword)) {
+            throw BusinessException.badRequest("原密码不能为空");
+        }
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new BusinessException(400, "原密码不正确");
+        }
+        String pwd = validatePassword(newPassword);
+        if (passwordEncoder.matches(pwd, user.getPasswordHash())) {
+            throw new BusinessException(400, "新密码不能与原密码相同");
+        }
+        userMapper.updatePassword(user.getId(), passwordEncoder.encode(pwd));
+        // 修改密码后其它设备的会话立即失效，当前会话保留，避免本人被踢下线
+        sessionMapper.deleteByUserIdExcept(user.getId(), token);
+    }
+
+    /** 管理员创建账号 */
+    @Transactional(rollbackFor = Exception.class)
+    public User createUser(String username, String password, String nickname, String role) {
+        String name = normalizeUsername(username);
+        String pwd = validatePassword(password);
+        if (userMapper.selectByUsername(name) != null) {
+            throw new BusinessException(409, "用户名已被占用: " + name);
+        }
+        User user = new User();
+        user.setId("u_" + UUID.randomUUID().toString().replace("-", ""));
+        user.setUsername(name);
+        user.setPasswordHash(passwordEncoder.encode(pwd));
+        String nick = StringUtils.hasText(nickname) ? nickname.trim() : name;
+        if (nick.length() > NICKNAME_MAX) {
+            nick = nick.substring(0, NICKNAME_MAX);
+        }
+        user.setNickname(nick);
+        user.setStatus(User.STATUS_ENABLED);
+        user.setRole(User.ROLE_ADMIN.equalsIgnoreCase(role) ? User.ROLE_ADMIN : User.ROLE_USER);
+        userMapper.insert(user);
+        return userMapper.selectById(user.getId());
+    }
+
+    /** 管理员重置密码（无需旧密码），并吊销该账号全部会话 */
+    @Transactional(rollbackFor = Exception.class)
+    public void resetPassword(String userId, String newPassword) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(404, "账号不存在");
+        }
+        String pwd = validatePassword(newPassword);
+        userMapper.updatePassword(userId, passwordEncoder.encode(pwd));
+        sessionMapper.deleteByUserId(userId);
+    }
+
+    /** 管理员启用/停用账号，停用同时吊销全部会话 */
+    @Transactional(rollbackFor = Exception.class)
+    public void updateStatus(String userId, Integer status) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(404, "账号不存在");
+        }
+        int target = (status != null && status == User.STATUS_ENABLED) ? User.STATUS_ENABLED : User.STATUS_DISABLED;
+        userMapper.updateStatus(userId, target);
+        if (target == User.STATUS_DISABLED) {
+            sessionMapper.deleteByUserId(userId);
+        }
+    }
+
+    /** 管理员删除账号：不允许删除最后一个管理员，不允许删除自己 */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteUser(String operatorUserId, String userId) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException(404, "账号不存在");
+        }
+        if (userId.equals(operatorUserId)) {
+            throw new BusinessException(400, "不能删除当前登录的账号");
+        }
+        if (user.isAdmin() && userMapper.countByRole(User.ROLE_ADMIN) <= 1) {
+            throw new BusinessException(400, "至少保留一个管理员账号");
+        }
+        sessionMapper.deleteByUserId(userId);
+        userMapper.deleteById(userId);
+    }
+
+    /** 管理员分页查询账号 */
+    public Map<String, Object> listUsers(String keyword, int page, int size) {
+        int p = Math.max(page, 1);
+        int s = size > 0 ? Math.min(size, properties.getMaxPageSize()) : properties.getDefaultPageSize();
+        long total = userMapper.countList(keyword);
+        java.util.List<Map<String, Object>> items = new java.util.ArrayList<>();
+        for (User user : userMapper.selectList(keyword, (p - 1) * s, s)) {
+            items.add(toView(user));
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("items", items);
+        data.put("total", total);
+        data.put("page", p);
+        data.put("size", s);
+        return data;
+    }
+
+    /** 生成随机密码：大小写字母 + 数字，避开易混淆字符，保证通过强度校验 */
+    public String generatePassword(int length) {
+        final String upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+        final String lower = "abcdefghijkmnpqrstuvwxyz";
+        final String digits = "23456789";
+        final String all = upper + lower + digits;
+        int len = Math.max(length, 10);
+        StringBuilder sb = new StringBuilder(len);
+        sb.append(upper.charAt(secureRandom.nextInt(upper.length())));
+        sb.append(lower.charAt(secureRandom.nextInt(lower.length())));
+        sb.append(digits.charAt(secureRandom.nextInt(digits.length())));
+        while (sb.length() < len) {
+            sb.append(all.charAt(secureRandom.nextInt(all.length())));
+        }
+        // 打乱前三位固定顺序
+        char[] chars = sb.toString().toCharArray();
+        for (int i = chars.length - 1; i > 0; i--) {
+            int j = secureRandom.nextInt(i + 1);
+            char tmp = chars[i];
+            chars[i] = chars[j];
+            chars[j] = tmp;
+        }
+        return new String(chars);
+    }
+
 
     private Map<String, Object> issueToken(User user) {
         int days = properties.getSessionDays() > 0 ? properties.getSessionDays() : 7;

@@ -49,15 +49,24 @@ public class AuthController {
         return authService.login(username, password);
     }
 
-    /** 当前登录用户 */
+    /** 当前登录用户（管理员账号亦可查询） */
     @GetMapping("/me")
     public Map<String, Object> me() {
         AuthContext context = AuthContext.current();
-        if (!context.isUser()) {
+        if (context.isAnonymous() || !StringUtils.hasText(context.getUserId())) {
             throw new BusinessException(401, "登录已失效，请重新登录");
         }
         User user = authService.requireUser(currentToken());
         return authService.toView(user);
+    }
+
+    /** 修改自己的密码：需提供原密码，成功后其它设备会话失效 */
+    @PostMapping("/password")
+    public Map<String, Object> changePassword(@RequestBody Map<String, Object> body) {
+        authService.changePassword(currentToken(), str(body, "oldPassword"), str(body, "newPassword"));
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("changed", true);
+        return data;
     }
 
     /** 登出：删除当前会话记录，token 立即失效 */

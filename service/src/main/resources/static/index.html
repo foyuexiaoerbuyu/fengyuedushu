@@ -53,6 +53,10 @@
   body.locked > header, body.locked > nav, body.locked > main { display: none; }
   #loginMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #23283a; display: flex; align-items: center; justify-content: center; z-index: 99; }
   #loginMask.hide { display: none; }
+  /* 修改密码 / 新建账号弹窗，复用登录遮罩的居中样式 */
+  #pwdMask, #accMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(35,40,58,.72); display: flex; align-items: center; justify-content: center; z-index: 120; }
+  #pwdMask.hide, #accMask.hide { display: none; }
+  #accMask .login-box { width: 420px; }
   .login-box { background: #fff; border-radius: 10px; padding: 26px 24px; width: 360px; max-width: 90vw; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
   .login-box h2 { margin: 0 0 8px; font-size: 16px; }
   .login-box .hint { margin: 0; }
@@ -68,9 +72,13 @@
 <div id="loginMask">
   <div class="login-box">
     <h2>服务端管理</h2>
-    <p class="hint">请输入管理口令（服务端 FYREADER_ADMIN_TOKEN），验证通过后才能进入管理界面。</p>
-    <input type="password" id="adminTokenInput" placeholder="管理口令" autocomplete="current-password">
-    <button class="btn primary" onclick="doLogin()">进入管理界面</button>
+    <p class="hint">使用管理员账号登录；页签「账号管理」可开通成员账号、重置密码。</p>
+    <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
+    <input type="password" id="loginPwd" placeholder="密码" autocomplete="current-password">
+    <button class="btn primary" onclick="doLogin()">登录</button>
+    <p class="hint" style="margin:14px 0 6px;font-size:12px">或使用部署时配置的管理口令（FYREADER_ADMIN_TOKEN）</p>
+    <input type="password" id="adminTokenInput" placeholder="管理口令（可选）" autocomplete="off">
+    <button class="btn" onclick="doTokenLogin()">用管理口令进入</button>
     <p id="loginMsg" class="login-msg"></p>
   </div>
 </div>
@@ -79,6 +87,8 @@
   <span class="stat">书籍 <b id="statBooks">0</b></span>
   <span class="stat">章节 <b id="statChapters">0</b></span>
   <span class="stat">书源 <b id="statSources">0</b></span>
+  <span class="stat" id="adminWho" style="display:none"></span>
+  <button class="btn btn-logout" style="margin-left:auto" onclick="openPasswordDialog()">修改密码</button>
   <button class="btn btn-logout" onclick="logout()">退出登录</button>
 </header>
 
@@ -88,6 +98,7 @@
   <button data-tab="sources">书源管理</button>
   <button data-tab="version">版本发布</button>
   <button data-tab="import">TXT 导入</button>
+  <button data-tab="accounts">账号管理</button>
   <button data-tab="api">接口说明</button>
 </nav>
 
@@ -249,6 +260,32 @@
     </div>
   </section>
 
+  <!-- 账号管理 -->
+  <section id="tab-accounts">
+    <div class="toolbar">
+      <input type="text" id="accKeyword" placeholder="用户名 / 昵称关键词" style="width:220px">
+      <button class="btn primary" onclick="loadAccounts(1)">查询</button>
+      <button class="btn" onclick="openCreateDialog()">新建账号</button>
+      <span class="stat" id="accTotal"></span>
+    </div>
+    <table>
+      <thead>
+      <tr>
+        <th style="width:150px">用户名</th>
+        <th style="width:120px">昵称</th>
+        <th style="width:80px">角色</th>
+        <th style="width:70px">状态</th>
+        <th style="width:150px">创建时间</th>
+        <th>操作</th>
+      </tr>
+      </thead>
+      <tbody id="accBody">
+      <tr><td colspan="6" class="empty">暂无数据</td></tr>
+      </tbody>
+    </table>
+    <div class="pager" id="accPager"></div>
+  </section>
+
   <!-- 接口说明 -->
   <section id="tab-api">
     <table>
@@ -364,6 +401,35 @@
   </form>
 </dialog>
 
+<div id="pwdMask" class="hide">
+  <div class="login-box">
+    <h2 id="pwdTitle">修改密码</h2>
+    <input type="password" id="pwdOld" placeholder="原密码" autocomplete="current-password">
+    <input type="password" id="pwdNew" placeholder="新密码" autocomplete="new-password">
+    <input type="password" id="pwdNew2" placeholder="确认新密码" autocomplete="new-password">
+    <button class="btn primary" onclick="submitPasswordChange()">确认修改</button>
+    <button class="btn" onclick="closePasswordDialog()">取消</button>
+    <p id="pwdMsg" class="login-msg"></p>
+  </div>
+</div>
+
+<div id="accMask" class="hide">
+  <div class="login-box">
+    <h2 id="accTitle">新建账号</h2>
+    <input type="text" id="accUser" placeholder="用户名（3-32 位，字母数字 _ @ . -）" autocomplete="off">
+    <input type="text" id="accNick" placeholder="昵称（可选）" autocomplete="off">
+    <select id="accRole">
+      <option value="USER">普通用户</option>
+      <option value="ADMIN">管理员</option>
+    </select>
+    <input type="text" id="accPwd" placeholder="初始密码（留空自动生成）" autocomplete="off">
+    <button class="btn" onclick="fillRandomPassword()">生成随机密码</button>
+    <button class="btn primary" onclick="submitCreateAccount()">创建</button>
+    <button class="btn" onclick="closeCreateDialog()">取消</button>
+    <p id="accMsg" class="login-msg"></p>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -389,13 +455,22 @@ async function api(path, options) {
   const opts = Object.assign({}, options || {});
   const headers = Object.assign({}, opts.headers || {});
   const adminToken = getAdminToken();
-  if (adminToken) { headers['X-Admin-Token'] = adminToken; }
+  if (adminToken) {
+    // 账号登录时是会话 token；管理口令模式下是固定口令，服务端两种都认
+    headers['X-Admin-Token'] = adminToken;
+    headers['X-FY-Token'] = adminToken;
+  }
   opts.headers = headers;
   const res = await fetch(path, opts);
   if (res.status === 401) {
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-    showLogin('管理口令无效或已失效，请重新输入');
-    throw new Error('管理口令无效或已失效');
+    clearLoginState();
+    showLogin('登录已失效，请重新登录');
+    throw new Error('登录已失效');
+  }
+  if (res.status === 403) {
+    clearLoginState();
+    showLogin('该账号没有管理权限');
+    throw new Error('没有管理权限');
   }
   let json;
   try { json = await res.json(); } catch (e) { throw new Error('返回内容不是 JSON（' + res.status + '）'); }
@@ -412,6 +487,7 @@ document.querySelectorAll('nav button').forEach(btn => {
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     if (btn.dataset.tab === 'sources') loadSources();
     if (btn.dataset.tab === 'version') { loadVersion(); loadApkList(); }
+    if (btn.dataset.tab === 'accounts') loadAccounts(1);
   };
 });
 
@@ -863,16 +939,38 @@ async function saveVersion() {
   } catch (e) { toast(e.message, true); }
 }
 
-/* ---------- 管理口令登录 ---------- */
+/* ---------- 登录（管理员账号 / 管理口令） ---------- */
 let consoleStarted = false;
+let loginInfo = null;
 
 function showLogin(msg) {
   document.body.classList.add('locked');
   document.getElementById('loginMask').classList.remove('hide');
   document.getElementById('loginMsg').textContent = msg || '';
-  const input = document.getElementById('adminTokenInput');
-  input.value = '';
-  setTimeout(() => input.focus(), 30);
+  const user = document.getElementById('loginUser');
+  const pwd = document.getElementById('loginPwd');
+  if (pwd) { pwd.value = ''; }
+  setTimeout(() => (user && user.value ? pwd : user).focus(), 30);
+}
+
+/* 账号密码登录：要求该账号角色为 ADMIN */
+async function loginByAccount(username, password) {
+  try {
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password })
+    });
+    let json = null;
+    try { json = await res.json(); } catch (e) { return { error: '服务端返回异常（' + res.status + '）' }; }
+    if (!json || json.code !== 0) { return { error: (json && json.message) || '登录失败' }; }
+    const data = json.data || {};
+    const user = data.user || {};
+    if (!(user.admin || user.role === 'ADMIN')) { return { error: '该账号没有管理权限' }; }
+    return { token: data.token, user: user };
+  } catch (e) {
+    return { error: '无法连接服务端，请确认服务已启动' };
+  }
 }
 
 function hideLogin() {
@@ -903,7 +1001,28 @@ function startConsole() {
   loadBooks(1);
 }
 
+/* 账号登录 */
 async function doLogin() {
+  const username = (document.getElementById('loginUser').value || '').trim();
+  const password = document.getElementById('loginPwd').value || '';
+  const msg = document.getElementById('loginMsg');
+  if (!username) { msg.textContent = '请输入用户名'; return; }
+  if (!password) { msg.textContent = '请输入密码'; return; }
+  msg.textContent = '正在登录...';
+  const r = await loginByAccount(username, password);
+  if (r.error) { msg.textContent = r.error; return; }
+  sessionStorage.setItem(ADMIN_TOKEN_KEY, r.token);
+  sessionStorage.setItem('fy_admin_name', (r.user.nickname || r.user.username || username));
+  sessionStorage.setItem('fy_admin_mode', 'account');
+  document.getElementById('loginPwd').value = '';
+  loginInfo = r.user;
+  updateWho();
+  hideLogin();
+  startConsole();
+}
+
+/* 管理口令登录（兼容旧部署） */
+async function doTokenLogin() {
   const input = document.getElementById('adminTokenInput');
   const token = (input.value || '').trim();
   const msg = document.getElementById('loginMsg');
@@ -912,35 +1031,216 @@ async function doLogin() {
   const err = await verifyAdminToken(token);
   if (err) { msg.textContent = err; return; }
   sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
+  sessionStorage.setItem('fy_admin_mode', 'token');
+  sessionStorage.removeItem('fy_admin_name');
+  loginInfo = null;
+  updateWho();
   input.value = '';
   hideLogin();
   startConsole();
 }
 
-function logout() {
+function updateWho() {
+  const el = document.getElementById('adminWho');
+  if (!el) return;
+  const mode = sessionStorage.getItem('fy_admin_mode');
+  const name = sessionStorage.getItem('fy_admin_name');
+  if (mode === 'account' && name) {
+    el.textContent = '当前账号：' + name;
+    el.style.display = '';
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+function clearLoginState() {
   sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+  sessionStorage.removeItem('fy_admin_name');
+  sessionStorage.removeItem('fy_admin_mode');
   consoleStarted = false;
+}
+
+function logout() {
+  const mode = sessionStorage.getItem('fy_admin_mode');
+  const token = getAdminToken();
+  if (mode === 'account' && token) {
+    // 尽力吊销服务端会话，失败不影响本地退出
+    fetch('/api/v1/auth/logout', { method: 'POST', headers: { 'X-FY-Token': token } }).catch(() => {});
+  }
+  clearLoginState();
+  updateWho();
   showLogin('已退出登录');
 }
 
 document.getElementById('adminTokenInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); doTokenLogin(); }
+});
+document.getElementById('loginPwd').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); doLogin(); }
 });
 
-/* 启动：先校验口令，通过后才加载数据，未通过不渲染管理界面 */
+/* 启动：先校验当前凭证，通过后才加载数据，未通过不渲染管理界面 */
 (async function initAuth() {
   showLogin('');
   const saved = getAdminToken();
   if (!saved) { return; }
   const err = await verifyAdminToken(saved);
   if (err) {
-    sessionStorage.removeItem(ADMIN_TOKEN_KEY);
+    clearLoginState();
     showLogin(err);
     return;
   }
+  updateWho();
   hideLogin();
   startConsole();
 })();
+
+/* ---------- 账号管理 ---------- */
+const accState = { page: 1, size: 20, total: 0 };
+
+async function loadAccounts(page) {
+  if (page) { accState.page = page; }
+  const kw = (document.getElementById('accKeyword').value || '').trim();
+  const body = document.getElementById('accBody');
+  try {
+    const d = await api('/api/admin/users?keyword=' + encodeURIComponent(kw)
+      + '&page=' + accState.page + '&size=' + accState.size);
+    const items = d.items || [];
+    accState.total = d.total || 0;
+    document.getElementById('accTotal').textContent = '共 ' + accState.total + ' 个账号';
+    if (!items.length) {
+      body.innerHTML = '<tr><td colspan="6" class="empty">暂无数据</td></tr>';
+    } else {
+      body.innerHTML = items.map(u => `<tr>
+        <td>${esc(u.username)}</td>
+        <td>${esc(u.nickname)}</td>
+        <td>${u.role === 'ADMIN' ? '<b>管理员</b>' : '普通用户'}</td>
+        <td>${u.status === 0 ? '<span style="color:#c93434">停用</span>' : '启用'}</td>
+        <td>${fmt(u.createTime)}</td>
+        <td>
+          <button class="btn" onclick="resetAccountPassword('${esc(u.id)}','${esc(u.username)}')">重置密码</button>
+          <button class="btn" onclick="toggleAccountStatus('${esc(u.id)}',${u.status === 0 ? 1 : 0})">${u.status === 0 ? '启用' : '停用'}</button>
+          <button class="btn" onclick="deleteAccount('${esc(u.id)}','${esc(u.username)}')">删除</button>
+        </td>
+      </tr>`).join('');
+    }
+    renderAccPager();
+  } catch (e) {
+    body.innerHTML = '<tr><td colspan="6" class="empty">加载失败：' + esc(e.message) + '</td></tr>';
+  }
+}
+
+function renderAccPager() {
+  const el = document.getElementById('accPager');
+  const pages = Math.max(1, Math.ceil(accState.total / accState.size));
+  el.innerHTML = `<button class="btn" ${accState.page <= 1 ? 'disabled' : ''} onclick="loadAccounts(${accState.page - 1})">上一页</button>
+    <span class="stat">第 ${accState.page} / ${pages} 页</span>
+    <button class="btn" ${accState.page >= pages ? 'disabled' : ''} onclick="loadAccounts(${accState.page + 1})">下一页</button>`;
+}
+
+async function resetAccountPassword(id, username) {
+  if (!confirm('重置账号 ' + username + ' 的密码？该账号所有设备将退出登录。')) { return; }
+  try {
+    const d = await api('/api/admin/users/' + encodeURIComponent(id) + '/password', { method: 'POST', body: '{}',
+      headers: { 'Content-Type': 'application/json' } });
+    alert('账号 ' + username + ' 的新密码：' + d.password + '\n请复制给该用户，登录后建议自行修改。');
+  } catch (e) { toast(e.message, true); }
+}
+
+async function toggleAccountStatus(id, status) {
+  try {
+    await api('/api/admin/users/' + encodeURIComponent(id) + '/status', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: status }) });
+    toast(status === 1 ? '已启用' : '已停用');
+    loadAccounts();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function deleteAccount(id, username) {
+  if (!confirm('删除账号 ' + username + '？该操作不可恢复。')) { return; }
+  try {
+    await api('/api/admin/users/' + encodeURIComponent(id), { method: 'DELETE' });
+    toast('已删除');
+    loadAccounts();
+  } catch (e) { toast(e.message, true); }
+}
+
+function openCreateDialog() {
+  document.getElementById('accTitle').textContent = '新建账号';
+  document.getElementById('accUser').value = '';
+  document.getElementById('accNick').value = '';
+  document.getElementById('accRole').value = 'USER';
+  document.getElementById('accPwd').value = '';
+  document.getElementById('accMsg').textContent = '';
+  document.getElementById('accMask').classList.remove('hide');
+}
+
+function closeCreateDialog() {
+  document.getElementById('accMask').classList.add('hide');
+}
+
+async function fillRandomPassword() {
+  try {
+    const d = await api('/api/admin/users/generate-password?length=12');
+    document.getElementById('accPwd').value = d.password;
+  } catch (e) { toast(e.message, true); }
+}
+
+async function submitCreateAccount() {
+  const username = (document.getElementById('accUser').value || '').trim();
+  const nickname = (document.getElementById('accNick').value || '').trim();
+  const role = document.getElementById('accRole').value;
+  let password = (document.getElementById('accPwd').value || '').trim();
+  const msg = document.getElementById('accMsg');
+  if (!username) { msg.textContent = '请输入用户名'; return; }
+  if (!password) {
+    await fillRandomPassword();
+    password = (document.getElementById('accPwd').value || '').trim();
+  }
+  msg.textContent = '正在创建...';
+  try {
+    await api('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password, nickname: nickname, role: role }) });
+    closeCreateDialog();
+    alert('账号已创建\n用户名：' + username + '\n初始密码：' + password + '\n请转告用户并建议首次登录后修改。');
+    loadAccounts(1);
+  } catch (e) { msg.textContent = e.message; }
+}
+
+/* ---------- 修改自己的密码 ---------- */
+function openPasswordDialog() {
+  const mode = sessionStorage.getItem('fy_admin_mode');
+  if (mode !== 'account') {
+    toast('当前为管理口令登录，无法修改密码；请改用管理员账号登录', true);
+    return;
+  }
+  document.getElementById('pwdOld').value = '';
+  document.getElementById('pwdNew').value = '';
+  document.getElementById('pwdNew2').value = '';
+  document.getElementById('pwdMsg').textContent = '';
+  document.getElementById('pwdMask').classList.remove('hide');
+}
+
+function closePasswordDialog() {
+  document.getElementById('pwdMask').classList.add('hide');
+}
+
+async function submitPasswordChange() {
+  const oldPwd = document.getElementById('pwdOld').value || '';
+  const newPwd = document.getElementById('pwdNew').value || '';
+  const newPwd2 = document.getElementById('pwdNew2').value || '';
+  const msg = document.getElementById('pwdMsg');
+  if (!oldPwd) { msg.textContent = '请输入原密码'; return; }
+  if (newPwd.length < 6) { msg.textContent = '新密码至少 6 位'; return; }
+  if (newPwd !== newPwd2) { msg.textContent = '两次输入的新密码不一致'; return; }
+  msg.textContent = '正在提交...';
+  try {
+    await api('/api/v1/auth/password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }) });
+    closePasswordDialog();
+    toast('密码已修改，其它设备需重新登录');
+  } catch (e) { msg.textContent = e.message; }
+}
 
 /* ---------- APK 上传 ---------- */
 function fmtSize(n) {

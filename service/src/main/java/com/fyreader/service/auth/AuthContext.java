@@ -53,6 +53,11 @@ public final class AuthContext {
         return new AuthContext(Role.USER, userId, username, token);
     }
 
+    /** 账号体系中角色为 ADMIN 的用户：既有 userId（便于记录操作人），又具备部署者权限 */
+    public static AuthContext ofAdminUser(String userId, String username, String token) {
+        return new AuthContext(Role.ADMIN, userId, username, token);
+    }
+
     public static void set(AuthContext context) {
         HOLDER.set(context == null ? ANONYMOUS : context);
     }

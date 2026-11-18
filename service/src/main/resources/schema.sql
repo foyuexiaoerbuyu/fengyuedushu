@@ -116,6 +116,14 @@ CREATE TABLE IF NOT EXISTS t_user_session (
 CREATE INDEX IF NOT EXISTS idx_session_user ON t_user_session(user_id);
 
 -- ============================================================
+-- 账号角色（幂等 DDL）：ADMIN 管理端账号 / USER 普通用户
+-- 存量账号一律按 USER 处理；管理员账号由启动引导程序创建，不写死在 sql 中
+-- ============================================================
+ALTER TABLE t_user ADD COLUMN IF NOT EXISTS role VARCHAR(16) DEFAULT 'USER';
+
+UPDATE t_user SET role = 'USER' WHERE role IS NULL;
+
+-- ============================================================
 -- 书籍归属与可见性（幂等 DDL，可重复执行）
 -- owner_id 为空表示"系统/管理端书籍"；visibility 为 PUBLIC / PRIVATE
 -- 存量书籍默认 PUBLIC，保证改造上线后匿名用户仍可访问原有全部书籍

@@ -49,6 +49,10 @@
   #toast { position: fixed; right: 20px; bottom: 20px; background: #23283a; color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 420px; }
   #toast.show { opacity: .95; }
   #toast.error { background: #c93434; }
+#pwdMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(35,40,58,.72); display: flex; align-items: center; justify-content: center; z-index: 120; }
+#pwdMask.hide { display: none; }
+.pwd-box { background: #fff; border-radius: 10px; padding: 24px; width: 360px; max-width: 90vw; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
+.pwd-box h2 { margin: 0 0 14px; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -60,6 +64,7 @@
     <a href="/user.html" class="active">我的书架</a>
     <a href="/index.html">管理后台</a>
   </div>
+  <button class="btn btn-logout" id="btnPwd" style="display:none;margin-left:auto" onclick="openPwd()">修改密码</button>
   <button class="btn btn-logout" id="btnLogout" style="display:none" onclick="doLogout()">退出登录</button>
 </header>
 
@@ -150,6 +155,18 @@
   </div>
 </main>
 
+<div id="pwdMask" class="hide">
+  <div class="pwd-box">
+    <h2>修改密码</h2>
+    <div class="field"><label>原密码</label><input type="password" id="pwdOld" autocomplete="current-password"></div>
+    <div class="field"><label>新密码（至少 6 位）</label><input type="password" id="pwdNew" autocomplete="new-password"></div>
+    <div class="field"><label>确认新密码</label><input type="password" id="pwdNew2" autocomplete="new-password"></div>
+    <p class="msg" id="pwdMsg"></p>
+    <button class="btn primary" onclick="submitPwd()">确认修改</button>
+    <button class="btn" onclick="closePwd()">取消</button>
+  </div>
+</div>
+
 <div id="toast"></div>
 <script>
 const TOKEN_KEY = 'fy_user_token';
@@ -220,12 +237,14 @@ async function submitAuth() {
 async function renderAuthState() {
   const stat = document.getElementById('statInfo');
   const btn = document.getElementById('btnLogout');
+  const btnPwd = document.getElementById('btnPwd');
   const authView = document.getElementById('authView');
   const userView = document.getElementById('userView');
   if (!token()) {
     state.me = null;
     stat.textContent = '未登录';
     btn.style.display = 'none';
+    if (btnPwd) { btnPwd.style.display = 'none'; }
     authView.style.display = '';
     userView.style.display = 'none';
     return;
@@ -234,6 +253,7 @@ async function renderAuthState() {
     state.me = await api('/api/v1/auth/me');
     stat.textContent = '已登录：' + (state.me.nickname || state.me.username);
     btn.style.display = '';
+    if (btnPwd) { btnPwd.style.display = ''; }
     authView.style.display = 'none';
     userView.style.display = '';
     loadMine(1);
@@ -336,6 +356,37 @@ async function uploadTxt() {
     btn.disabled = false;
     btn.textContent = '上传并解析入库';
   }
+}
+
+/* ---------- 修改密码 ---------- */
+function openPwd() {
+  document.getElementById('pwdOld').value = '';
+  document.getElementById('pwdNew').value = '';
+  document.getElementById('pwdNew2').value = '';
+  document.getElementById('pwdMsg').textContent = '';
+  document.getElementById('pwdMask').classList.remove('hide');
+}
+
+function closePwd() {
+  document.getElementById('pwdMask').classList.add('hide');
+}
+
+async function submitPwd() {
+  const oldPwd = document.getElementById('pwdOld').value || '';
+  const newPwd = document.getElementById('pwdNew').value || '';
+  const newPwd2 = document.getElementById('pwdNew2').value || '';
+  const msg = document.getElementById('pwdMsg');
+  if (!oldPwd) { msg.textContent = '请输入原密码'; return; }
+  if (newPwd.length < 6) { msg.textContent = '新密码至少 6 位'; return; }
+  if (newPwd !== newPwd2) { msg.textContent = '两次输入的新密码不一致'; return; }
+  msg.textContent = '正在提交...';
+  try {
+    await api('/api/v1/auth/password', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }) });
+    closePwd();
+    toast('密码已修改，其它设备需重新登录');
+  } catch (e) { msg.textContent = e.message; }
 }
 
 async function doLogout() {

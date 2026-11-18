@@ -20,6 +20,12 @@ public class User implements Serializable {
     /** 用户状态：停用 */
     public static final int STATUS_DISABLED = 0;
 
+    /** 角色：管理端账号，可登录后台并管理全部账号 */
+    public static final String ROLE_ADMIN = "ADMIN";
+
+    /** 角色：普通用户 */
+    public static final String ROLE_USER = "USER";
+
     private String id;
 
     private String username;
@@ -32,11 +38,18 @@ public class User implements Serializable {
     /** 1 启用 / 0 停用 */
     private Integer status;
 
+    /** ADMIN / USER */
+    private String role;
+
     private Date createTime;
 
     private Date updateTime;
 
     public boolean isEnabled() {
         return status == null || status == STATUS_ENABLED;
+    }
+
+    public boolean isAdmin() {
+        return ROLE_ADMIN.equalsIgnoreCase(role);
     }
 }

@@ -57,7 +57,13 @@ public class TokenInterceptor implements HandlerInterceptor {
         return checkClient(request, response);
     }
 
-    /** 管理端：口令未配置视为未开启，任何请求都拒绝 */
+    /**
+     * 管理端两种入口，满足其一即放行：
+     * <ol>
+     *   <li>固定管理口令（X-Admin-Token 头或 adminToken 查询参数），兼容旧部署方式与环境变量注入；</li>
+     *   <li>账号体系登录后签发的 token（X-FY-Token 或 X-Admin-Token 头），要求该账号角色为 ADMIN。</li>
+     * </ol>
+     */
     private boolean checkAdmin(HttpServletRequest request, HttpServletResponse response) throws Exception {
         String adminToken = request.getHeader("X-Admin-Token");
         if (!StringUtils.hasText(adminToken)) {
@@ -68,7 +74,21 @@ public class TokenInterceptor implements HandlerInterceptor {
             AuthContext.set(AuthContext.admin(adminToken));
             return true;
         }
-        return reject(response, "管理口令无效或缺失");
+        String sessionToken = request.getHeader(CLIENT_TOKEN_HEADER);
+        if (!StringUtils.hasText(sessionToken)) {
+            sessionToken = adminToken;
+        }
+        if (StringUtils.hasText(sessionToken)) {
+            AuthContext ctx = authService.resolve(sessionToken);
+            if (ctx != null && ctx.isAdmin()) {
+                AuthContext.set(ctx);
+                return true;
+            }
+            if (ctx != null) {
+                return reject(response, HttpStatus.FORBIDDEN.value(), "该账号没有管理权限");
+            }
+        }
+        return reject(response, HttpStatus.UNAUTHORIZED.value(), "管理口令无效或缺失");
     }
 
     /**
@@ -123,7 +143,11 @@ public class TokenInterceptor implements HandlerInterceptor {
     }
 
     private boolean reject(HttpServletResponse response, String message) throws Exception {
-        response.setStatus(HttpStatus.UNAUTHORIZED.value());
+        return reject(response, HttpStatus.UNAUTHORIZED.value(), message);
+    }
+
+    private boolean reject(HttpServletResponse response, int status, String message) throws Exception {
+        response.setStatus(status);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
         try (PrintWriter writer = response.getWriter()) {

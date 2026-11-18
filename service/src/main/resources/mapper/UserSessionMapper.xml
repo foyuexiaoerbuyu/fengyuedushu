@@ -26,6 +26,12 @@
         DELETE FROM t_user_session WHERE user_id = #{userId}
     </delete>
 
+    <delete id="deleteByUserIdExcept">
+        DELETE FROM t_user_session
+        WHERE user_id = #{userId}
+          AND token &lt;&gt; #{keepToken}
+    </delete>
+
     <delete id="deleteExpired">
         DELETE FROM t_user_session WHERE expire_time &lt; #{now}
     </delete>
