@@ -6,15 +6,28 @@
 <title>风月读书 · 服务端管理</title>
 <style>
   * { box-sizing: border-box; }
+  html, body { height: 100%; }
   body { margin: 0; font-family: -apple-system, "Microsoft YaHei", Arial, sans-serif; background: #f5f6f8; color: #2c3038; font-size: 14px; }
-  header { background: #23283a; color: #fff; padding: 14px 24px; display: flex; align-items: center; gap: 24px; }
-  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-  header .stat { font-size: 13px; color: #a9b1c7; }
-  header .stat b { color: #7fd4a1; font-weight: 600; }
-  nav { background: #fff; border-bottom: 1px solid #e3e6ec; padding: 0 24px; display: flex; gap: 4px; }
-  nav button { border: 0; background: none; padding: 12px 16px; cursor: pointer; font-size: 14px; color: #5c6472; border-bottom: 2px solid transparent; }
-  nav button.active { color: #2f6feb; border-bottom-color: #2f6feb; font-weight: 600; }
-  main { padding: 20px 24px 48px; }
+  .layout { display: flex; min-height: 100vh; align-items: stretch; }
+  .sidebar { width: 214px; flex: 0 0 214px; background: #23283a; color: #c2cade; display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
+  .sidebar .brand { padding: 18px 18px 10px; color: #fff; font-size: 16px; font-weight: 600; }
+  .sidebar .brand span { display: block; font-size: 12px; color: #7f88a0; font-weight: 400; margin-top: 4px; }
+  .sidebar .group { padding: 12px 18px 6px; font-size: 11px; color: #6d7690; letter-spacing: 1px; }
+  .sidebar .menu { display: flex; flex-direction: column; gap: 2px; padding: 0 8px; }
+  .sidebar .menu button { border: 0; background: none; color: #c2cade; text-align: left; padding: 9px 12px; border-radius: 6px; cursor: pointer; font-size: 13.5px; }
+  .sidebar .menu button:hover { background: #2c3348; color: #fff; }
+  .sidebar .menu button.active { background: #2f6feb; color: #fff; font-weight: 600; }
+  .sidebar .side-foot { margin-top: auto; padding: 12px 14px 16px; border-top: 1px solid #2f3648; font-size: 12px; color: #9aa3ba; }
+  .sidebar .side-foot .name { color: #fff; font-size: 13px; margin-bottom: 8px; word-break: break-all; }
+  .sidebar .side-foot button { width: 100%; margin-top: 6px; border: 1px solid #454c60; background: #323848; color: #dfe4ee; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 12px; }
+  .sidebar .side-foot button:hover { color: #fff; border-color: #7d879f; }
+  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  header { background: #fff; border-bottom: 1px solid #e3e6ec; padding: 13px 24px; display: flex; align-items: center; gap: 20px; position: sticky; top: 0; z-index: 10; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  header .stat { font-size: 13px; color: #6b7280; }
+  header .stat b { color: #2f6feb; font-weight: 600; }
+  header .who { margin-left: auto; font-size: 12.5px; color: #6b7280; }
+  main { padding: 20px 24px 48px; overflow-x: auto; }
   section { display: none; }
   section.active { display: block; }
   .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
@@ -34,7 +47,10 @@
   td .muted { color: #9aa1ae; font-size: 12px; }
   .pager { margin-top: 14px; display: flex; gap: 10px; align-items: center; color: #6b7280; font-size: 13px; }
   .empty { padding: 40px; text-align: center; color: #9aa1ae; background: #fff; border-radius: 8px; }
-  #toast { position: fixed; right: 20px; bottom: 20px; background: #23283a; color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 420px; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+  .badge.pub { background: #e9f7ef; color: #227a4a; }
+  .badge.pri { background: #fdeeee; color: #c93434; }
+  #toast { position: fixed; right: 20px; bottom: 20px; background: #23283a; color: #fff; padding: 10px 16px; border-radius: 6px; font-size: 13px; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 420px; z-index: 300; }
   #toast.show { opacity: .95; }
   #toast.error { background: #c93434; }
   dialog { border: 0; border-radius: 10px; padding: 0; width: 620px; max-width: 94vw; box-shadow: 0 12px 40px rgba(0,0,0,.2); }
@@ -50,11 +66,9 @@
   #chapterTitle { font-weight: 600; font-size: 14px; margin: 0 0 4px; }
   .chapter-link { color: #2f6fed; text-decoration: none; }
   .chapter-link:hover { text-decoration: underline; }
-  body.locked > header, body.locked > nav, body.locked > main { display: none; }
-  #loginMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: #23283a; display: flex; align-items: center; justify-content: center; z-index: 99; }
+  #loginMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(35,40,58,.72); display: flex; align-items: center; justify-content: center; z-index: 200; }
   #loginMask.hide { display: none; }
-  /* 修改密码 / 新建账号弹窗，复用登录遮罩的居中样式 */
-  #pwdMask, #accMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(35,40,58,.72); display: flex; align-items: center; justify-content: center; z-index: 120; }
+  #pwdMask, #accMask { position: fixed; left: 0; top: 0; right: 0; bottom: 0; background: rgba(35,40,58,.72); display: flex; align-items: center; justify-content: center; z-index: 220; }
   #pwdMask.hide, #accMask.hide { display: none; }
   #accMask .login-box { width: 420px; }
   .login-box { background: #fff; border-radius: 10px; padding: 26px 24px; width: 360px; max-width: 90vw; box-shadow: 0 12px 40px rgba(0,0,0,.3); }
@@ -64,15 +78,22 @@
   .login-box input:focus { border-color: #2f6feb; }
   .login-box button { width: 100%; }
   .login-msg { color: #c93434; font-size: 12px; min-height: 16px; margin: 10px 0 0; }
-  header .btn-logout { margin-left: auto; background: #323848; color: #dfe4ee; border: 1px solid #454c60; }
-  header .btn-logout:hover { color: #fff; border-color: #7d879f; }
+  .reader { display: grid; grid-template-columns: 280px 1fr; gap: 14px; align-items: start; }
+  .catalog { background: #fff; border-radius: 8px; padding: 8px; max-height: 72vh; overflow: auto; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .catalog .c-title { font-size: 12px; color: #9aa1ae; padding: 8px 10px; }
+  .catalog button { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 7px 10px; border-radius: 6px; color: #4b5464; font-size: 13px; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .catalog button:hover { background: #f0f5ff; color: #2f6feb; }
+  .catalog button.active { background: #eef3ff; color: #2f6feb; font-weight: 600; }
+  .pane { background: #fff; border-radius: 8px; padding: 22px 26px; min-height: 60vh; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
+  .pane h3 { margin: 0 0 14px; font-size: 17px; }
+  .pane pre { white-space: pre-wrap; word-break: break-word; font-family: inherit; font-size: 14.5px; line-height: 1.9; color: #333; margin: 0; }
 </style>
 </head>
-<body class="locked">
-<div id="loginMask">
+<body>
+<div id="loginMask" class="hide">
   <div class="login-box">
-    <h2>服务端管理</h2>
-    <p class="hint">使用管理员账号登录；页签「账号管理」可开通成员账号、重置密码。</p>
+    <h2>登录 · 风月读书</h2>
+    <p class="hint">普通账号可使用「我的书架」；管理员账号额外拥有左侧「管理」菜单权限。</p>
     <input type="text" id="loginUser" placeholder="用户名" autocomplete="username">
     <input type="password" id="loginPwd" placeholder="密码" autocomplete="current-password">
     <button class="btn primary" onclick="doLogin()">登录</button>
@@ -80,29 +101,114 @@
     <input type="password" id="adminTokenInput" placeholder="管理口令（可选）" autocomplete="off">
     <button class="btn" onclick="doTokenLogin()">用管理口令进入</button>
     <p id="loginMsg" class="login-msg"></p>
+    <button class="btn" type="button" style="margin-top:10px" onclick="hideLogin()">关闭</button>
   </div>
 </div>
-<header>
-  <h1>风月读书 · 服务端管理</h1>
-  <span class="stat">书籍 <b id="statBooks">0</b></span>
-  <span class="stat">章节 <b id="statChapters">0</b></span>
-  <span class="stat">书源 <b id="statSources">0</b></span>
-  <span class="stat" id="adminWho" style="display:none"></span>
-  <button class="btn btn-logout" style="margin-left:auto" onclick="openPasswordDialog()">修改密码</button>
-  <button class="btn btn-logout" onclick="logout()">退出登录</button>
-</header>
 
-<nav>
-  <button class="active" data-tab="books">书籍管理</button>
-  <button data-tab="chapters">章节管理</button>
-  <button data-tab="sources">书源管理</button>
-  <button data-tab="version">版本发布</button>
-  <button data-tab="import">TXT 导入</button>
-  <button data-tab="accounts">账号管理</button>
-  <button data-tab="api">接口说明</button>
-</nav>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">风月读书<span>服务端控制台</span></div>
+    <div class="group">阅读</div>
+    <div class="menu">
+      <button class="active" data-tab="library">公开书库</button>
+      <button data-tab="mine">我的书架</button>
+    </div>
+    <div class="group">管理</div>
+    <div class="menu">
+      <button data-tab="books">书籍管理</button>
+      <button data-tab="chapters">章节管理</button>
+      <button data-tab="sources">书源管理</button>
+      <button data-tab="version">版本发布</button>
+      <button data-tab="import">TXT 导入</button>
+      <button data-tab="accounts">用户管理</button>
+      <button data-tab="api">接口说明</button>
+    </div>
+    <div class="side-foot">
+      <div class="name" id="sideWho">未登录</div>
+      <button type="button" onclick="openPasswordDialog()">修改密码</button>
+      <button type="button" onclick="openLogin()">登录 / 切换账号</button>
+      <button type="button" onclick="logout()">退出登录</button>
+    </div>
+  </aside>
+
+  <div class="content">
+    <header>
+      <h1>服务端控制台</h1>
+      <span class="stat">书籍 <b id="statBooks">0</b></span>
+      <span class="stat">章节 <b id="statChapters">0</b></span>
+      <span class="stat">书源 <b id="statSources">0</b></span>
+      <span class="who" id="adminWho" style="display:none"></span>
+    </header>
+
 
 <main>
+
+  <!-- 公开书库 -->
+  <section id="tab-library" class="active">
+    <div id="libListView">
+      <div class="toolbar">
+        <input type="text" id="libKeyword" placeholder="书名 / 作者关键词" style="width:220px"
+               onkeydown="if(event.key==='Enter'){event.preventDefault();loadLibrary(1)}">
+        <select id="libCategory" onchange="loadLibrary(1)"><option value="">全部分类</option></select>
+        <button class="btn" onclick="loadLibrary(1)">查询</button>
+        <span class="hint" id="libHint">匿名即可浏览全部公开书籍；登录后可上传并管理自己的书。</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th style="width:46px">序号</th><th>书名</th><th style="width:130px">作者</th><th style="width:100px">分类</th>
+              <th style="width:80px">章节数</th><th style="width:90px">状态</th><th style="width:150px">更新时间</th><th style="width:90px">操作</th></tr>
+        </thead>
+        <tbody id="libRows"></tbody>
+      </table>
+      <div class="pager">
+        <button class="btn" onclick="prevLibPage()">上一页</button>
+        <span id="libPageInfo"></span>
+        <button class="btn" onclick="nextLibPage()">下一页</button>
+      </div>
+    </div>
+
+    <div id="libReaderView" style="display:none">
+      <div class="toolbar">
+        <button class="btn" onclick="closeReader()">← 返回列表</button>
+        <b id="readerTitle">-</b>
+        <span class="hint" id="readerMeta"></span>
+      </div>
+      <div class="reader">
+        <div class="catalog" id="readerCatalog"></div>
+        <div class="pane" id="readerPane"><p class="hint">从左侧目录选择章节开始阅读。</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 我的书架 -->
+  <section id="tab-mine">
+    <div class="toolbar">
+      <input type="text" id="mineKeyword" placeholder="书名关键词" style="width:200px"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();loadMine(1)}">
+      <button class="btn" onclick="loadMine(1)">查询</button>
+      <label class="btn" style="position:relative;overflow:hidden;display:inline-block">
+        上传 TXT
+        <input type="file" id="mineFile" accept=".txt" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0;cursor:pointer" onchange="uploadMine()">
+      </label>
+      <button class="btn" onclick="openLogin()" id="mineLoginBtn">登录</button>
+      <label class="hint" style="display:flex;align-items:center;gap:6px;margin:0;cursor:pointer">
+        <input type="checkbox" id="mineUploadPublic"> 上传后直接公开
+      </label>
+      <span class="hint" id="mineHint">不勾选则先存为私有，可在列表里随时切换。</span>
+    </div>
+    <table>
+      <thead>
+        <tr><th style="width:46px">序号</th><th>书名</th><th style="width:130px">作者</th><th style="width:100px">分类</th>
+            <th style="width:90px">可见性</th><th style="width:80px">章节数</th><th style="width:150px">更新时间</th><th style="width:170px">操作</th></tr>
+      </thead>
+      <tbody id="mineRows"></tbody>
+    </table>
+    <div class="pager">
+      <button class="btn" onclick="prevMinePage()">上一页</button>
+      <span id="minePageInfo"></span>
+      <button class="btn" onclick="nextMinePage()">下一页</button>
+    </div>
+  </section>
   <!-- 书籍 -->
   <section id="tab-books" class="active">
     <div class="toolbar">
@@ -122,7 +228,7 @@
     <table>
       <thead>
         <tr><th style="width:46px">序号</th><th>书名</th><th style="width:130px">作者</th><th style="width:90px">分类</th>
-            <th style="width:80px">章节数</th><th style="width:90px">状态</th><th style="width:150px">更新时间</th><th style="width:190px">操作</th></tr>
+            <th style="width:80px">章节数</th><th style="width:90px">状态</th><th style="width:90px">可见性</th><th style="width:150px">更新时间</th><th style="width:200px">操作</th></tr>
       </thead>
       <tbody id="bookRows"></tbody>
     </table>
@@ -308,6 +414,8 @@
     <p class="hint">统一响应：<code>{ code:0, message:"ok", data:..., timestamp:1700000000000 }</code>；分页数据形如 <code>{ records, total, page, size, pages }</code>。</p>
   </section>
 </main>
+  </div>
+</div>
 
 <dialog id="bookDialog">
   <form method="dialog" onsubmit="return false">
@@ -333,7 +441,16 @@
         <div class="field"><label>来源名称</label><input type="text" id="f_sourceName" placeholder="本地服务"></div>
         <div class="field"><label>来源地址</label><input type="text" id="f_sourceUrl"></div>
       </div>
-      <div class="field"><label>备注</label><input type="text" id="f_remark"></div>
+      <div class="grid2">
+        <div class="field"><label>可见性</label>
+          <select id="f_visibility">
+            <option value="PUBLIC">公开（书库可读）</option>
+            <option value="PRIVATE">私有（仅归属用户可读）</option>
+          </select>
+        </div>
+        <div class="field"><label>备注</label><input type="text" id="f_remark"></div>
+      </div>
+      <p class="hint" style="margin-top:-6px">公开后匿名用户可在「公开书库」浏览与阅读；私有仅归属用户与管理员可见。</p>
     </div>
     <div class="dlg-foot">
       <button type="button" class="btn" onclick="document.getElementById('bookDialog').close()">取消</button>
@@ -447,10 +564,6 @@ function toast(msg, isError) {
   el._t = setTimeout(() => { el.className = ''; }, 2600);
 }
 
-const ADMIN_TOKEN_KEY = 'fy_admin_token';
-
-function getAdminToken() { return sessionStorage.getItem(ADMIN_TOKEN_KEY) || ''; }
-
 async function api(path, options) {
   const opts = Object.assign({}, options || {});
   const headers = Object.assign({}, opts.headers || {});
@@ -468,9 +581,8 @@ async function api(path, options) {
     throw new Error('登录已失效');
   }
   if (res.status === 403) {
-    clearLoginState();
-    showLogin('该账号没有管理权限');
-    throw new Error('没有管理权限');
+    showLogin('当前账号没有该操作的权限');
+    throw new Error('没有操作权限');
   }
   let json;
   try { json = await res.json(); } catch (e) { throw new Error('返回内容不是 JSON（' + res.status + '）'); }
@@ -478,17 +590,31 @@ async function api(path, options) {
   return json.data;
 }
 
-/* ---------- Tab ---------- */
-document.querySelectorAll('nav button').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('main section').forEach(s => s.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
-    if (btn.dataset.tab === 'sources') loadSources();
-    if (btn.dataset.tab === 'version') { loadVersion(); loadApkList(); }
-    if (btn.dataset.tab === 'accounts') loadAccounts(1);
-  };
+/* ---------- 左侧菜单路由 ---------- */
+const ADMIN_TABS = ['books', 'chapters', 'sources', 'version', 'import', 'accounts', 'api'];
+let currentTab = 'library';
+
+function activateTab(tab, silent) {
+  if (!document.getElementById('tab-' + tab)) { tab = 'library'; }
+  currentTab = tab;
+  document.querySelectorAll('.sidebar button[data-tab]').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('main section').forEach(s => s.classList.toggle('active', s.id === 'tab-' + tab));
+  if (!silent && location.hash !== '#' + tab) { history.replaceState(null, '', '#' + tab); }
+  if (tab === 'library') loadLibrary(1);
+  if (tab === 'mine') loadMine(1);
+  if (tab === 'books') loadBooks();
+  if (tab === 'sources') loadSources();
+  if (tab === 'version') { loadVersion(); loadApkList(); }
+  if (tab === 'accounts') loadAccounts(1);
+  if (ADMIN_TABS.includes(tab) && !getAdminToken()) {
+    showLogin('「' + (document.querySelector('.sidebar button[data-tab="' + tab + '"]').textContent.trim())
+      + '」需要管理员账号登录');
+  }
+}
+
+document.querySelectorAll('.sidebar button[data-tab]').forEach(btn => {
+  btn.onclick = () => activateTab(btn.dataset.tab);
 });
 
 function fmt(dt) { return dt ? String(dt).replace('T', ' ').substring(0, 19) : '-'; }
@@ -496,6 +622,13 @@ function esc(s) { return (s == null ? '' : String(s)).replace(/[&<>"']/g, c => (
 
 /* ---------- 统计 ---------- */
 async function loadStats() {
+  if (!getAdminToken()) {
+    ['statBooks', 'statChapters', 'statSources'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.textContent = '-'; }
+    });
+    return;
+  }
   try {
     const d = await api('/api/admin/stats');
     document.getElementById('statBooks').textContent = d.bookCount;
@@ -510,11 +643,15 @@ async function loadCategories() {
   if (!sel) return;
   const current = sel.value;
   try {
-    const d = await api('/api/admin/categories');
-    const items = (d && d.items) || [];
-    sel.innerHTML = '<option value="">全部分类</option>' + items.map(it =>
-      `<option value="${esc(it.category)}">${esc(it.category)}（${it.count}）</option>`).join('');
-    sel.value = items.some(it => it.category === current) ? current : '';
+    const d = getAdminToken() ? await api('/api/admin/categories') : await api('/api/v1/categories');
+    const items = (d && (d.items || d)) || [];
+    sel.innerHTML = '<option value="">全部分类</option>' + items.map(it => {
+      const name = it && it.category ? it.category : it;
+      const count = it && it.count != null ? `（${it.count}）` : '';
+      return `<option value="${esc(name)}">${esc(name)}${count}</option>`;
+    }).join('');
+    const names = items.map(it => (it && it.category ? it.category : it));
+    sel.value = names.includes(current) ? current : '';
   } catch (e) {
     /* 分类加载失败不影响书籍列表 */
   }
@@ -535,7 +672,7 @@ async function loadBooks(page) {
     const rows = d.records || [];
     const tbody = document.getElementById('bookRows');
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="8"><div class="empty">暂无数据</div></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9"><div class="empty">暂无数据</div></td></tr>';
     } else {
       tbody.innerHTML = rows.map((b, i) => `
         <tr>
@@ -545,10 +682,12 @@ async function loadBooks(page) {
           <td>${esc(b.category)}</td>
           <td>${b.chapterCount || 0}</td>
           <td>${esc(b.status)}</td>
+          <td>${visibilityBadge(b.visibility)}</td>
           <td>${fmt(b.updateTime)}</td>
           <td>
             <button class="link" onclick="loadChaptersById('${esc(b.id)}','${esc(b.name)}')">章节</button>
             <button class="link" onclick="openBookDialog('${esc(b.id)}')">编辑</button>
+            <button class="link" onclick="setBookVisibility('${esc(b.id)}','${b.visibility === 'PRIVATE' ? 'PUBLIC' : 'PRIVATE'}')">${b.visibility === 'PRIVATE' ? '设为公开' : '设为私有'}</button>
             <button class="link" onclick="refreshBook('${esc(b.id)}')">重算</button>
             <button class="link" style="color:#d93b3b" onclick="removeBook('${esc(b.id)}','${esc(b.name)}')">删除</button>
           </td>
@@ -576,6 +715,7 @@ async function openBookDialog(id) {
   ['f_bookId','f_name','f_author','f_category','f_wordCount','f_coverUrl','f_intro','f_sourceName','f_sourceUrl','f_remark']
     .forEach(k => f(k).value = '');
   f('f_status').value = '连载中';
+  f('f_visibility').value = 'PUBLIC';
   document.getElementById('bookDialogTitle').textContent = id ? '编辑书籍' : '新增书籍';
   if (id) {
     try {
@@ -591,6 +731,7 @@ async function openBookDialog(id) {
       f('f_sourceName').value = b.sourceName || '';
       f('f_sourceUrl').value = b.sourceUrl || '';
       f('f_remark').value = b.remark || '';
+      f('f_visibility').value = (b.visibility === 'PRIVATE' ? 'PRIVATE' : 'PUBLIC');
     } catch (e) { toast(e.message, true); return; }
   }
   document.getElementById('bookDialog').showModal();
@@ -602,7 +743,7 @@ async function saveBook() {
     name: v('f_name'), author: v('f_author'), category: v('f_category'),
     status: v('f_status'), wordCount: v('f_wordCount'), coverUrl: v('f_coverUrl'),
     intro: v('f_intro'), sourceName: v('f_sourceName'), sourceUrl: v('f_sourceUrl'),
-    remark: v('f_remark')
+    remark: v('f_remark'), visibility: v('f_visibility')
   };
   if (!payload.name) { toast('书名不能为空', true); return; }
   const id = v('f_bookId');
@@ -678,7 +819,7 @@ function loadChaptersById(bookId, bookName) {
   state.currentBookId = bookId;
   state.currentBookName = bookName || bookId;
   state.chapterPage = 1;
-  document.querySelector('nav button[data-tab="chapters"]').click();
+  activateTab('chapters', true);
   document.getElementById('chapterBookId').value = bookId;
   document.getElementById('chapterTitle').textContent = '《' + state.currentBookName + '》目录 · ' + bookId;
   loadChapters(1);
@@ -939,12 +1080,29 @@ async function saveVersion() {
   } catch (e) { toast(e.message, true); }
 }
 
-/* ---------- 登录（管理员账号 / 管理口令） ---------- */
+/* ---------- 登录 / 身份（统一一次登录，按角色放开菜单） ---------- */
+const TOKEN_KEY = 'fy_token';
+const LEGACY_ADMIN_KEY = 'fy_admin_token';
+const USER_KEY = 'fy_user';
+const MODE_KEY = 'fy_login_mode';
 let consoleStarted = false;
 let loginInfo = null;
 
+function getAdminToken() {
+  return localStorage.getItem(TOKEN_KEY)
+    || localStorage.getItem(LEGACY_ADMIN_KEY)
+    || sessionStorage.getItem(LEGACY_ADMIN_KEY) || '';
+}
+function getLoginUser() {
+  try { return JSON.parse(localStorage.getItem(USER_KEY) || 'null'); } catch (e) { return null; }
+}
+function isAdminLogin() {
+  const u = getLoginUser();
+  if (localStorage.getItem(MODE_KEY) === 'token') { return true; }
+  return !!(u && u.role === 'ADMIN');
+}
+
 function showLogin(msg) {
-  document.body.classList.add('locked');
   document.getElementById('loginMask').classList.remove('hide');
   document.getElementById('loginMsg').textContent = msg || '';
   const user = document.getElementById('loginUser');
@@ -952,8 +1110,10 @@ function showLogin(msg) {
   if (pwd) { pwd.value = ''; }
   setTimeout(() => (user && user.value ? pwd : user).focus(), 30);
 }
+function hideLogin() { document.getElementById('loginMask').classList.add('hide'); }
+function openLogin() { showLogin(''); }
 
-/* 账号密码登录：要求该账号角色为 ADMIN */
+/* 账号密码登录：普通用户与管理员共用一套会话 */
 async function loginByAccount(username, password) {
   try {
     const res = await fetch('/api/v1/auth/login', {
@@ -965,24 +1125,18 @@ async function loginByAccount(username, password) {
     try { json = await res.json(); } catch (e) { return { error: '服务端返回异常（' + res.status + '）' }; }
     if (!json || json.code !== 0) { return { error: (json && json.message) || '登录失败' }; }
     const data = json.data || {};
-    const user = data.user || {};
-    if (!(user.admin || user.role === 'ADMIN')) { return { error: '该账号没有管理权限' }; }
-    return { token: data.token, user: user };
+    return { token: data.token, user: data.user || {} };
   } catch (e) {
     return { error: '无法连接服务端，请确认服务已启动' };
   }
-}
-
-function hideLogin() {
-  document.getElementById('loginMask').classList.add('hide');
-  document.body.classList.remove('locked');
 }
 
 /* 用管理口令探一次统计接口：只有 code=0 才认为口令有效 */
 async function verifyAdminToken(token) {
   try {
     const res = await fetch('/api/admin/stats', { headers: { 'X-Admin-Token': token } });
-    if (res.status === 401) { return '管理口令不正确'; }
+    if (res.status === 401) { return '管理口令或登录已失效'; }
+    if (res.status === 403) { return '该账号没有管理权限'; }
     if (!res.ok) { return '服务端返回异常（' + res.status + '）'; }
     let json;
     try { json = await res.json(); } catch (e) { return '返回内容不是 JSON（' + res.status + '）'; }
@@ -998,10 +1152,26 @@ function startConsole() {
   consoleStarted = true;
   loadStats();
   loadCategories();
-  loadBooks(1);
 }
 
-/* 账号登录 */
+function applyLoginState() {
+  updateWho();
+  const mineHint = document.getElementById('mineHint');
+  if (mineHint) {
+    mineHint.textContent = isAdminLogin()
+      ? '管理员视角：此处列出全部书籍，可直接切换公开 / 私有。'
+      : '不勾选则先存为私有，可在列表里随时切换。';
+  }
+  const mineBtn = document.getElementById('mineLoginBtn');
+  if (mineBtn) { mineBtn.style.display = getAdminToken() ? 'none' : ''; }
+  const hint = document.getElementById('libHint');
+  if (hint) {
+    hint.textContent = getAdminToken()
+      ? '已登录：可阅读全部可访问书籍；如需管理后台请使用管理员账号。'
+      : '匿名即可浏览全部公开书籍；登录后可上传并管理自己的书。';
+  }
+}
+
 async function doLogin() {
   const username = (document.getElementById('loginUser').value || '').trim();
   const password = document.getElementById('loginPwd').value || '';
@@ -1011,14 +1181,18 @@ async function doLogin() {
   msg.textContent = '正在登录...';
   const r = await loginByAccount(username, password);
   if (r.error) { msg.textContent = r.error; return; }
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, r.token);
-  sessionStorage.setItem('fy_admin_name', (r.user.nickname || r.user.username || username));
-  sessionStorage.setItem('fy_admin_mode', 'account');
+  localStorage.setItem(TOKEN_KEY, r.token);
+  localStorage.setItem(USER_KEY, JSON.stringify(r.user || {}));
+  localStorage.setItem(MODE_KEY, 'account');
+  localStorage.removeItem(LEGACY_ADMIN_KEY);
+  sessionStorage.removeItem(LEGACY_ADMIN_KEY);
   document.getElementById('loginPwd').value = '';
-  loginInfo = r.user;
-  updateWho();
+  loginInfo = r.user || {};
   hideLogin();
+  applyLoginState();
   startConsole();
+  toast(isAdminLogin() ? '管理员登录成功' : '登录成功');
+  activateTab(ADMIN_TABS.includes(currentTab) && !isAdminLogin() ? 'library' : currentTab);
 }
 
 /* 管理口令登录（兼容旧部署） */
@@ -1030,46 +1204,56 @@ async function doTokenLogin() {
   msg.textContent = '正在校验...';
   const err = await verifyAdminToken(token);
   if (err) { msg.textContent = err; return; }
-  sessionStorage.setItem(ADMIN_TOKEN_KEY, token);
-  sessionStorage.setItem('fy_admin_mode', 'token');
-  sessionStorage.removeItem('fy_admin_name');
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.setItem(LEGACY_ADMIN_KEY, token);
+  localStorage.setItem(MODE_KEY, 'token');
   loginInfo = null;
-  updateWho();
   input.value = '';
   hideLogin();
+  applyLoginState();
   startConsole();
+  toast('已用管理口令进入');
+  activateTab(currentTab);
 }
 
 function updateWho() {
-  const el = document.getElementById('adminWho');
-  if (!el) return;
-  const mode = sessionStorage.getItem('fy_admin_mode');
-  const name = sessionStorage.getItem('fy_admin_name');
-  if (mode === 'account' && name) {
-    el.textContent = '当前账号：' + name;
-    el.style.display = '';
-  } else {
-    el.style.display = 'none';
+  const who = document.getElementById('adminWho');
+  const side = document.getElementById('sideWho');
+  const mode = localStorage.getItem(MODE_KEY);
+  const u = getLoginUser();
+  let label = '未登录';
+  if (mode === 'token') { label = '管理口令模式'; }
+  else if (u && (u.username || u.nickname)) {
+    label = (u.nickname || u.username) + (u.role === 'ADMIN' ? '（管理员）' : '');
+  }
+  if (side) { side.textContent = label; }
+  if (who) {
+    if (mode === 'token') { who.textContent = '管理口令模式'; who.style.display = ''; }
+    else if (u && (u.username || u.nickname)) { who.textContent = '当前账号：' + (u.nickname || u.username) + (u.role === 'ADMIN' ? ' · 管理员' : ''); who.style.display = ''; }
+    else { who.style.display = 'none'; }
   }
 }
 
 function clearLoginState() {
-  sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-  sessionStorage.removeItem('fy_admin_name');
-  sessionStorage.removeItem('fy_admin_mode');
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(LEGACY_ADMIN_KEY);
+  localStorage.removeItem(MODE_KEY);
+  sessionStorage.removeItem(LEGACY_ADMIN_KEY);
   consoleStarted = false;
+  loginInfo = null;
 }
 
 function logout() {
-  const mode = sessionStorage.getItem('fy_admin_mode');
-  const token = getAdminToken();
-  if (mode === 'account' && token) {
-    // 尽力吊销服务端会话，失败不影响本地退出
+  const token = localStorage.getItem(TOKEN_KEY);
+  if (token) {
     fetch('/api/v1/auth/logout', { method: 'POST', headers: { 'X-FY-Token': token } }).catch(() => {});
   }
   clearLoginState();
-  updateWho();
-  showLogin('已退出登录');
+  applyLoginState();
+  toast('已退出登录');
+  activateTab('library');
 }
 
 document.getElementById('adminTokenInput').addEventListener('keydown', e => {
@@ -1078,21 +1262,29 @@ document.getElementById('adminTokenInput').addEventListener('keydown', e => {
 document.getElementById('loginPwd').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); doLogin(); }
 });
+document.getElementById('loginUser').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); document.getElementById('loginPwd').focus(); }
+});
 
-/* 启动：先校验当前凭证，通过后才加载数据，未通过不渲染管理界面 */
+/* 启动：先按本地凭证确定身份，再按 hash 打开菜单 */
 (async function initAuth() {
-  showLogin('');
-  const saved = getAdminToken();
-  if (!saved) { return; }
-  const err = await verifyAdminToken(saved);
-  if (err) {
-    clearLoginState();
-    showLogin(err);
-    return;
-  }
   updateWho();
-  hideLogin();
+  const token = getAdminToken();
+  if (token && localStorage.getItem(TOKEN_KEY)) {
+    try {
+      const r = await fetch('/api/v1/auth/me', { headers: { 'X-FY-Token': token } });
+      const json = await r.json();
+      if (r.status === 401 || !json || json.code !== 0) {
+        clearLoginState();
+      } else if (json.data) {
+        localStorage.setItem(USER_KEY, JSON.stringify(json.data.user || json.data || {}));
+      }
+    } catch (e) { /* 忽略网络异常，按本地身份渲染 */ }
+  }
+  applyLoginState();
   startConsole();
+  const tab = (location.hash || '').replace('#', '') || 'library';
+  activateTab(tab, true);
 })();
 
 /* ---------- 账号管理 ---------- */
@@ -1209,9 +1401,9 @@ async function submitCreateAccount() {
 
 /* ---------- 修改自己的密码 ---------- */
 function openPasswordDialog() {
-  const mode = sessionStorage.getItem('fy_admin_mode');
-  if (mode !== 'account') {
-    toast('当前为管理口令登录，无法修改密码；请改用管理员账号登录', true);
+  const mode = localStorage.getItem(MODE_KEY);
+  if (mode !== 'account' || !localStorage.getItem(TOKEN_KEY)) {
+    toast('当前为管理口令登录或未登录，无法修改密码；请改用账号登录', true);
     return;
   }
   document.getElementById('pwdOld').value = '';
@@ -1305,8 +1497,8 @@ function uploadApk() {
     let json = null;
     try { json = JSON.parse(xhr.responseText); } catch (err) { json = null; }
     if (xhr.status === 401) {
-      sessionStorage.removeItem(ADMIN_TOKEN_KEY);
-      showLogin('管理口令无效或已失效，请重新输入');
+      clearLoginState();
+      showLogin('登录已失效，请重新登录');
       return;
     }
     if (!json || json.code !== 0) {
@@ -1345,6 +1537,238 @@ function openChapterPage(chapterId) {
   const qs = new URLSearchParams({ bookId: bookId, chapterId: chapterId, adminToken: token });
   window.open('/chapter.html?' + qs.toString(), '_blank');
 }
+
+/* ---------- 公开书库 ---------- */
+const libState = { page: 1, size: 20, total: 0, pages: 1 };
+const mineState = { page: 1, size: 20, total: 0, pages: 1 };
+let readerBookId = '';
+
+function visibilityBadge(v) {
+  return v === 'PRIVATE' ? '<span class="badge pri">私有</span>' : '<span class="badge pub">公开</span>';
+}
+
+async function fillLibCategories() {
+  const sel = document.getElementById('libCategory');
+  if (!sel) return;
+  const current = sel.value;
+  try {
+    const d = await api('/api/v1/categories');
+    const items = (d && (d.items || d)) || [];
+    sel.innerHTML = '<option value="">全部分类</option>' + items.map(it => {
+      const name = it && it.category ? it.category : it;
+      const count = it && it.count != null ? '（' + it.count + '）' : '';
+      return '<option value="' + esc(name) + '">' + esc(name) + count + '</option>';
+    }).join('');
+    sel.value = current || '';
+  } catch (e) { /* 分类失败不影响列表 */ }
+}
+
+async function loadLibrary(page) {
+  const box = document.getElementById('libRows');
+  if (!box) return;
+  if (!libState.catLoaded) { libState.catLoaded = true; fillLibCategories(); }
+  if (page) libState.page = page;
+  const kw = (document.getElementById('libKeyword').value || '').trim();
+  const category = document.getElementById('libCategory').value;
+  const qs = new URLSearchParams({ page: libState.page, size: libState.size });
+  if (kw) qs.set('keyword', kw);
+  if (category) { qs.set('category', category); }
+  try {
+    const d = await api('/api/v1/books?' + qs.toString());
+    const rows = d.records || [];
+    libState.total = d.total || 0;
+    libState.pages = d.pages || 1;
+    if (!rows.length) {
+      box.innerHTML = '<tr><td colspan="8"><div class="empty">暂无公开书籍</div></td></tr>';
+    } else {
+      box.innerHTML = rows.map((b, i) => '<tr>' +
+        '<td>' + ((libState.page - 1) * libState.size + i + 1) + '</td>' +
+        '<td><b>' + esc(b.name) + '</b></td>' +
+        '<td>' + esc(b.author || '-') + '</td>' +
+        '<td>' + esc(b.category || '未分类') + '</td>' +
+        '<td>' + (b.chapterCount || 0) + '</td>' +
+        '<td>' + esc(b.status || '-') + '</td>' +
+        '<td>' + fmt(b.updateTime) + '</td>' +
+        '<td><button class="link" onclick="openReader(\'' + esc(b.id) + '\')">阅读</button></td>' +
+        '</tr>').join('');
+    }
+    document.getElementById('libPageInfo').textContent =
+      '第 ' + (d.page || libState.page) + '/' + libState.pages + ' 页 · 共 ' + libState.total + ' 本';
+  } catch (e) {
+    box.innerHTML = '<tr><td colspan="8"><div class="empty">加载失败：' + esc(e.message) + '</div></td></tr>';
+  }
+}
+function prevLibPage() { if (libState.page > 1) loadLibrary(libState.page - 1); }
+function nextLibPage() { if (libState.page < libState.pages) loadLibrary(libState.page + 1); }
+
+/* ---------- 阅读视图 ---------- */
+async function openReader(bookId) {
+  readerBookId = bookId;
+  if (currentTab !== 'library') { activateTab('library', true); }
+  document.getElementById('libListView').style.display = 'none';
+  document.getElementById('libReaderView').style.display = '';
+  document.getElementById('readerTitle').textContent = '加载中…';
+  document.getElementById('readerMeta').textContent = '';
+  document.getElementById('readerCatalog').innerHTML = '<div class="c-title">加载目录…</div>';
+  document.getElementById('readerPane').innerHTML = '<p class="hint">从左侧目录选择章节开始阅读。</p>';
+  try {
+    const book = await api('/api/v1/books/' + encodeURIComponent(bookId));
+    document.getElementById('readerTitle').textContent = book.name || '-';
+    document.getElementById('readerMeta').innerHTML = visibilityBadge(book.visibility) +
+      ' 作者：' + esc(book.author || '佚名') + ' ｜ 分类：' + esc(book.category || '未分类') +
+      ' ｜ 章节：' + (book.chapterCount == null ? '-' : book.chapterCount) +
+      ' ｜ 字数：' + esc(book.wordCount || '-');
+    const list = await api('/api/v1/books/' + encodeURIComponent(bookId) + '/catalog');
+    renderReaderCatalog(bookId, list || []);
+  } catch (e) {
+    document.getElementById('readerCatalog').innerHTML = '<div class="c-title">目录加载失败</div>';
+    toast(e.message, true);
+  }
+}
+
+function renderReaderCatalog(bookId, chapters) {
+  const box = document.getElementById('readerCatalog');
+  if (!chapters.length) { box.innerHTML = '<div class="c-title">暂无章节</div>'; return; }
+  box.innerHTML = '<div class="c-title">共 ' + chapters.length + ' 章</div>' + chapters.map(c =>
+    '<button title="' + esc(c.title) + '" onclick="openReaderChapter(\'' + esc(bookId) + '\',\'' + esc(c.id) + '\',this)">' + esc(c.title) + '</button>'
+  ).join('');
+  openReaderChapter(bookId, chapters[0].id, box.querySelector('button'));
+}
+
+async function openReaderChapter(bookId, chapterId, btn) {
+  document.querySelectorAll('#readerCatalog button').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const pane = document.getElementById('readerPane');
+  pane.innerHTML = '<p class="hint">加载中…</p>';
+  try {
+    const c = await api('/api/v1/books/' + encodeURIComponent(bookId) + '/chapters/' + encodeURIComponent(chapterId));
+    pane.innerHTML = '<h3>' + esc(c.title) + '</h3><pre>' + esc(c.content || '（本章暂无正文）') + '</pre>';
+    pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    pane.innerHTML = '<p class="hint">加载失败：' + esc(e.message) + '</p>';
+  }
+}
+
+function closeReader() {
+  document.getElementById('libReaderView').style.display = 'none';
+  document.getElementById('libListView').style.display = '';
+  readerBookId = '';
+}
+
+/* ---------- 我的书架 ---------- */
+async function loadMine(page) {
+  const box = document.getElementById('mineRows');
+  if (!box) return;
+  if (!getAdminToken()) {
+    box.innerHTML = '<tr><td colspan="8"><div class="empty">登录后可查看并管理自己的书架</div></td></tr>';
+    document.getElementById('minePageInfo').textContent = '';
+    return;
+  }
+  if (page) mineState.page = page;
+  const kw = (document.getElementById('mineKeyword').value || '').trim();
+  const qs = new URLSearchParams({ page: mineState.page, size: mineState.size });
+  if (kw) qs.set('keyword', kw);
+  const admin = isAdminLogin();
+  try {
+    const d = await api((admin ? '/api/admin/books?' : '/api/v1/me/books?') + qs.toString());
+    const rows = d.records || d.items || [];
+    mineState.total = d.total || 0;
+    mineState.pages = d.pages || 1;
+    if (!rows.length) {
+      box.innerHTML = '<tr><td colspan="8"><div class="empty">' +
+        (admin ? '暂无书籍，可上传 TXT 或使用「TXT 导入」' : '书架还是空的，可上传 TXT 或使用「TXT 导入」') +
+        '</div></td></tr>';
+    } else {
+      box.innerHTML = rows.map((b, i) => '<tr>' +
+        '<td>' + ((mineState.page - 1) * mineState.size + i + 1) + '</td>' +
+        '<td><b>' + esc(b.name) + '</b><div class="muted">' + esc(b.id) + '</div></td>' +
+        '<td>' + esc(b.author || '-') + '</td>' +
+        '<td>' + esc(b.category || '未分类') + '</td>' +
+        '<td>' + visibilityBadge(b.visibility) + '</td>' +
+        '<td>' + (b.chapterCount || 0) + '</td>' +
+        '<td>' + fmt(b.updateTime) + '</td>' +
+        '<td>' +
+          '<button class="link" onclick="openReader(\'' + esc(b.id) + '\')">阅读</button>' +
+          '<button class="link" onclick="switchMineVisibility(\'' + esc(b.id) + '\',\'' + (b.visibility === 'PRIVATE' ? 'PUBLIC' : 'PRIVATE') + '\')">' + (b.visibility === 'PRIVATE' ? '设为公开' : '设为私有') + '</button>' +
+          '<button class="link" style="color:#d93b3b" onclick="removeMine(\'' + esc(b.id) + '\',\'' + esc(b.name) + '\')">删除</button>' +
+        '</td></tr>').join('');
+    }
+    document.getElementById('minePageInfo').textContent =
+      '第 ' + (d.page || mineState.page) + '/' + mineState.pages + ' 页 · 共 ' + mineState.total + ' 本';
+  } catch (e) {
+    box.innerHTML = '<tr><td colspan="8"><div class="empty">加载失败：' + esc(e.message) + '</div></td></tr>';
+  }
+}
+function prevMinePage() { if (mineState.page > 1) loadMine(mineState.page - 1); }
+function nextMinePage() { if (mineState.page < mineState.pages) loadMine(mineState.page + 1); }
+
+async function switchMineVisibility(bookId, target) {
+  try {
+    if (isAdminLogin()) {
+      await api('/api/admin/books/' + encodeURIComponent(bookId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibility: target })
+      });
+    } else {
+      await api('/api/v1/me/books/' + encodeURIComponent(bookId) + '/visibility?visibility=' + target, { method: 'PUT' });
+    }
+    toast(target === 'PUBLIC' ? '已设为公开，书库可见' : '已设为私有，仅自己可见');
+    loadMine();
+    loadLibrary(1);
+  } catch (e) { toast(e.message, true); }
+}
+
+async function removeMine(bookId, name) {
+  if (!confirm('确定删除《' + name + '》及其全部章节？该操作不可恢复。')) { return; }
+  try {
+    await api((isAdminLogin() ? '/api/admin/books/' : '/api/v1/me/books/') + encodeURIComponent(bookId), { method: 'DELETE' });
+    toast('已删除');
+    loadMine();
+  } catch (e) { toast(e.message, true); }
+}
+
+async function uploadMine() {
+  const input = document.getElementById('mineFile');
+  if (!input || !input.files || !input.files.length) { return; }
+  const file = input.files[0];
+  const fd = new FormData();
+  fd.append('file', file);
+  const guess = file.name.replace(/\.txt$/i, '');
+  const name = prompt('书名（留空则使用文件名）', guess);
+  if (name === null) { input.value = ''; return; }
+  if (name.trim()) { fd.append('bookName', name.trim()); }
+  const pub = document.getElementById('mineUploadPublic');
+  fd.append('visibility', pub && pub.checked ? 'PUBLIC' : 'PRIVATE');
+  try {
+    toast('正在上传解析…');
+    const r = await api('/api/v1/me/books/txt', { method: 'POST', body: fd });
+    toast('上传成功：' + ((r && (r.bookName || r.name)) || file.name));
+    input.value = '';
+    loadMine(1);
+  } catch (e) { toast(e.message, true); input.value = ''; }
+}
+
+/* ---------- 管理端：书籍可见性 ---------- */
+async function setBookVisibility(id, target) {
+  try {
+    await api('/api/admin/books/' + encodeURIComponent(id), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visibility: target })
+    });
+    toast(target === 'PUBLIC' ? '已设为公开，书库可见' : '已设为私有');
+    loadBooks();
+    loadLibrary(1);
+  } catch (e) { toast(e.message, true); }
+}
+
+/* hash 变化（浏览器前进后退）时同步菜单 */
+window.addEventListener('hashchange', () => {
+  const tab = (location.hash || '').replace('#', '') || 'library';
+  if (tab !== currentTab) { activateTab(tab, true); }
+});
+
 </script>
 </body>
 </html>
