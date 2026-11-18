@@ -80,6 +80,8 @@ public class Setting implements Serializable {
 
     private int catheGap = 150;//缓存间隔
 
+    private boolean autoCacheAll = false;//打开书籍时自动缓存全部章节
+
     private boolean refreshWhenStart;//打开软件自动更新书籍
 
     private boolean openBookStore;//是否开启书城
@@ -448,6 +450,14 @@ public class Setting implements Serializable {
 
     public void setCatheGap(int catheGap) {
         this.catheGap = catheGap;
+    }
+
+    public boolean isAutoCacheAll() {
+        return autoCacheAll;
+    }
+
+    public void setAutoCacheAll(boolean autoCacheAll) {
+        this.autoCacheAll = autoCacheAll;
     }
 
     public boolean isRefreshWhenStart() {

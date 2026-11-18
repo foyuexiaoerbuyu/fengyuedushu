@@ -74,12 +74,9 @@ class BookWCEstimate {
         if ((cachedChapterSize < 20 && chapters.size > 50) || cachedChapterSize == 0) return -2
         chapters.forEach { chapter ->
             if (ChapterService.isChapterCached(chapter)) {
-                sum += countChar(
-                    File(
-                        APPCONST.BOOK_CACHE_PATH + chapter.bookId
-                                + File.separator + chapter.title + FileUtils.SUFFIX_FY
-                    )
-                )
+                //缓存文件名已改为「序号、标题」，这里统一走 ChapterService.getChapterFile，
+                //新旧命名都能拿到真实文件，避免字数估算读到不存在的旧路径
+                sum += countChar(ChapterService.getChapterFile(chapter))
                 map[i++.toDouble()] = sum
             }
         }

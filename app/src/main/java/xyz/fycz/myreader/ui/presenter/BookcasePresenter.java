@@ -52,8 +52,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.reactivex.Observable;
 import io.reactivex.disposables.Disposable;
@@ -86,6 +89,8 @@ import xyz.fycz.myreader.ui.adapter.helper.ItemTouchCallback;
 import xyz.fycz.myreader.ui.dialog.BookGroupDialog;
 import xyz.fycz.myreader.ui.dialog.DialogCreator;
 import xyz.fycz.myreader.ui.fragment.BookcaseFragment;
+import xyz.fycz.myreader.util.ChapterCacheGuard;
+import xyz.fycz.myreader.util.ChapterDownloadQueue;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.ToastUtils;
 import xyz.fycz.myreader.util.help.StringHelper;
@@ -123,7 +128,7 @@ public class BookcasePresenter implements BasePresenter {
     private String downloadingChapter;//正在下载的章节名
     private boolean isDownloadFinish = true;//单本书是否下载完成
     private static boolean isStopDownload = true;//是否停止下载
-    private int curCacheChapterNum;//当前下载的章节数
+    private final AtomicInteger curCacheChapterNum = new AtomicInteger();//当前下载的章节数
     private int needCacheChapterNum;//需要下载的章节数
     private int successCathe;//成功章节数
     private int errorCathe;//失败章节数
@@ -864,7 +869,7 @@ public class BookcasePresenter implements BasePresenter {
         final int finalBegin = Math.max(0, begin);
         final int finalEnd = Math.min(end, mChapters.size());
         needCacheChapterNum = finalEnd - finalBegin;
-        curCacheChapterNum = 0;
+        curCacheChapterNum.set(0);
         tempCacheChapterNum = 0;
         successCathe = 0;
         errorCathe = 0;
@@ -872,7 +877,8 @@ public class BookcasePresenter implements BasePresenter {
         ArrayList<Chapter> needDownloadChapters = new ArrayList<>();
         for (int i = finalBegin; i < finalEnd; i++) {
             final Chapter chapter = mChapters.get(i);
-            if (StringHelper.isEmpty(chapter.getContent())) {
+            //判重口径与阅读页、预取完全一致：内容为空、无缓存文件（新旧命名都算）、无在途请求
+            if (ChapterCacheGuard.needDownload(chapter, book.getId())) {
                 needDownloadChapters.add(chapter);
             }
         }
@@ -881,19 +887,32 @@ public class BookcasePresenter implements BasePresenter {
             mHandler.sendEmptyMessage(11);
         }
         mHandler.postDelayed(sendDownloadNotification, 2 * downloadInterval);
+        final String fallbackBookId = book.getId();
         for (Chapter chapter : needDownloadChapters) {
+            if (isStopDownload) {
+                break;
+            }
             if (StringHelper.isEmpty(chapter.getBookId())) {
-                chapter.setBookId(book.getId());
+                chapter.setBookId(fallbackBookId);
+            }
+            //与阅读页预取、阅读页缓存共用同一份在途集合：
+            //抢不到说明已有请求在跑，直接跳过，既不重复请求也保证进度计数与实际处理数一致
+            if (!ChapterCacheGuard.tryAcquire(chapter, fallbackBookId)) {
+                curCacheChapterNum.incrementAndGet();
+                continue;
             }
             ReadCrawler mReadCrawler = ReadCrawlerUtil.getReadCrawler(book.getSource());
+            final CountDownLatch latch = new CountDownLatch(1);
             BookApi.getChapterContent(chapter, book, mReadCrawler).flatMap(s -> Observable.create(emitter -> {
                 downloadingChapter = chapter.getTitle();
                 mChapterService.saveOrUpdateChapter(chapter, s);
                 successCathe++;
-                curCacheChapterNum++;
+                curCacheChapterNum.incrementAndGet();
                 emitter.onNext(chapter);
                 emitter.onComplete();
-            })).subscribeOn(Schedulers.from(App.getApplication().getmFixedThreadPool())).subscribe(new MyObserver<Object>() {
+            }))
+                    //投递到与阅读页预取共享的单线程调度器，请求与写盘整体串行
+                    .subscribeOn(ChapterDownloadQueue.scheduler()).subscribe(new MyObserver<Object>() {
 
                 @Override
                 public void onSubscribe(Disposable d) {
@@ -902,22 +921,28 @@ public class BookcasePresenter implements BasePresenter {
 
                 @Override
                 public void onNext(@NotNull Object o) {
-
+                    ChapterCacheGuard.release(chapter, fallbackBookId);
+                    latch.countDown();
                 }
 
                 @Override
                 public void onError(Throwable e) {
-                    curCacheChapterNum++;
+                    //失败也要释放占位并计入进度，否则该章被永久跳过、进度永远差一格
+                    ChapterCacheGuard.release(chapter, fallbackBookId);
+                    curCacheChapterNum.incrementAndGet();
                     errorCathe++;
+                    latch.countDown();
                     if (App.isDebug()) e.printStackTrace();
                 }
             });
             try {
+                //等待本章真正结束（含超时兜底），保证"缓存全部"逐章严格串行
+                latch.await(60, TimeUnit.SECONDS);
                 Thread.sleep(downloadInterval);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-            if (curCacheChapterNum == needCacheChapterNum) {
+            if (curCacheChapterNum.get() == needCacheChapterNum) {
                 if (!isDownloadAll) {
                     isStopDownload = true;
                 }
@@ -928,7 +953,7 @@ public class BookcasePresenter implements BasePresenter {
             }
         }
         if (!isDownloadAll) {
-            if (curCacheChapterNum == needCacheChapterNum) {
+            if (curCacheChapterNum.get() == needCacheChapterNum) {
                 ToastUtils.showInfo("《" + book.getName() + "》" + mMainActivity.getString(R.string.download_already_all_tips));
             }
         }
@@ -939,7 +964,7 @@ public class BookcasePresenter implements BasePresenter {
      * 发送通知
      */
     private void sendNotification() {
-        if (curCacheChapterNum == needCacheChapterNum) {
+        if (curCacheChapterNum.get() == needCacheChapterNum) {
             mHandler.sendEmptyMessage(9);
             notificationUtil.cancelAll();
             return;
@@ -952,17 +977,17 @@ public class BookcasePresenter implements BasePresenter {
                     //点击通知后自动清除
                     .setAutoCancel(true)
                     .setContentTitle("正在下载：" + downloadingBook +
-                            "[" + curCacheChapterNum + "/" + needCacheChapterNum + "]")
+                            "[" + curCacheChapterNum.get() + "/" + needCacheChapterNum + "]")
                     .setContentText(downloadingChapter == null ? "  " : downloadingChapter)
                     .addAction(R.drawable.ic_stop_black_24dp, "停止",
                             notificationUtil.getChancelPendingIntent(cancelDownloadReceiver.class))
                     .build();
             notificationUtil.notify(1000, notification);
         }
-        if (tempCacheChapterNum < curCacheChapterNum) {
+        if (tempCacheChapterNum < curCacheChapterNum.get()) {
             tempCount = 1500 / downloadInterval;
-            tempCacheChapterNum = curCacheChapterNum;
-        } else if (tempCacheChapterNum == curCacheChapterNum) {
+            tempCacheChapterNum = curCacheChapterNum.get();
+        } else if (tempCacheChapterNum == curCacheChapterNum.get()) {
             tempCount--;
             if (tempCount == 0) {
                 isDownloadFinish = true;

@@ -29,10 +29,10 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
+import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Function;
 import xyz.fycz.myreader.application.App;
@@ -42,6 +42,8 @@ import xyz.fycz.myreader.entity.Setting;
 import xyz.fycz.myreader.greendao.entity.Book;
 import xyz.fycz.myreader.greendao.entity.Chapter;
 import xyz.fycz.myreader.greendao.service.ChapterService;
+import xyz.fycz.myreader.util.ChapterCacheGuard;
+import xyz.fycz.myreader.util.ChapterDownloadQueue;
 import xyz.fycz.myreader.util.help.StringHelper;
 import xyz.fycz.myreader.util.utils.FileUtils;
 import xyz.fycz.myreader.util.utils.RxUtils;
@@ -52,7 +54,8 @@ public class NetPageLoader extends PageLoader {
     private static final String TAG = "PageFactory";
     private ChapterService mChapterService;
     private ReadCrawler mReadCrawler;
-    private List<Chapter> loadingChapters = new CopyOnWriteArrayList<>();
+    // 在途章节集合已提升为进程级共享（见 ChapterDownloadQueue），
+    // 避免章节预取与「缓存全部」各自判重，导致同一章节被重复请求
 
     public NetPageLoader(PageView pageView, Book collBook, ChapterService mChapterService,
                          ReadCrawler mReadCrawler, Setting setting) {
@@ -255,14 +258,17 @@ public class NetPageLoader extends PageLoader {
         // 过滤，哪些数据已经加载了/正在加载
         for (int i = start; i <= end; ++i) {
             Chapter txtChapter = mChapterList.get(i);
-            if (!hasChapterData(txtChapter) && !loadingChapters.contains(txtChapter)) {
+            // 判重统一走 ChapterCacheGuard：已缓存（含旧命名）与在途请求都直接排除
+            if (!hasChapterData(txtChapter)
+                    && ChapterCacheGuard.needDownload(txtChapter, mCollBook.getId())) {
                 chapters.add(txtChapter);
             }
         }
 
         if (!chapters.isEmpty()) {
-            loadingChapters.addAll(chapters);
             for (Chapter chapter : chapters) {
+                // getChapterContent 内部会再次原子地抢占在途标记，
+                // 已被「缓存全部」占用的章节不会重复发起请求
                 getChapterContent(chapter);
             }
         }
@@ -274,15 +280,27 @@ public class NetPageLoader extends PageLoader {
      * @param chapter
      */
     public void getChapterContent(Chapter chapter) {
+        final String bookId = mCollBook.getId();
+        // 原子抢占在途标记：已有请求在途（可能由「缓存全部」发起）时直接放弃，避免重复请求
+        if (!ChapterCacheGuard.tryAcquire(chapter, bookId)) {
+            return;
+        }
         BookApi.getChapterContent(chapter, mCollBook, mReadCrawler).flatMap(s -> Observable.create(emitter -> {
-            loadingChapters.remove(chapter);
             String content = StringHelper.isEmpty(s) ? "章节内容为空" : s;
             mChapterService.saveOrUpdateChapter(chapter, content);
             emitter.onNext(content);
             emitter.onComplete();
-        })).compose(RxUtils::toSimpleSingle).subscribe(new MyObserver<Object>() {
+        }))
+                // 与「缓存全部」共用同一个单线程调度器，章节请求和写盘严格串行
+                .subscribeOn(ChapterDownloadQueue.scheduler())
+                .observeOn(AndroidSchedulers.mainThread())
+                //页面退出导致订阅被取消时同样要释放占位，否则该章节会被永久跳过
+                .doOnDispose(() -> ChapterCacheGuard.release(chapter, bookId))
+                .subscribe(new MyObserver<Object>() {
             @Override
             public void onNext(@NotNull Object o) {
+                // 请求与写盘已完成，移除在途标记
+                ChapterCacheGuard.release(chapter, bookId);
                 if (isClose()) return;
                 if (getPageStatus() == PageLoader.STATUS_LOADING && mCurChapterPos == chapter.getNumber()) {
                     if (isPrev) {
@@ -295,7 +313,8 @@ public class NetPageLoader extends PageLoader {
 
             @Override
             public void onError(Throwable e) {
-                loadingChapters.remove(chapter);
+                // 失败同样移除在途标记，否则该章节会被永久跳过
+                ChapterCacheGuard.release(chapter, bookId);
                 if (isClose()) return;
                 if (mCurChapterPos == chapter.getNumber())
                     chapterError("请尝试重新加载或换源\n" + e.getLocalizedMessage());

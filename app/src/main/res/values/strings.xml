@@ -153,6 +153,8 @@
     <string name="clear_cathe">清除缓存</string>
     <string name="download_all_tip">选择一键缓存的书籍</string>
     <string name="download_all">一键缓存</string>
+    <string name="auto_cache_all">自动缓存全部</string>
+    <string name="auto_cache_all_tip">开启后打开书籍时自动缓存全书章节，已缓存章节不再重复请求</string>
     <string name="close_refresh">禁用更新</string>
     <string name="close_refresh_tip">选择禁用更新的书籍</string>
     <string name="other_setting">其他设置</string>

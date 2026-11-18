@@ -68,6 +68,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import io.reactivex.Single;
 import io.reactivex.disposables.Disposable;
@@ -111,6 +114,8 @@ import xyz.fycz.myreader.ui.popmenu.CustomizeComMenu;
 import xyz.fycz.myreader.ui.popmenu.CustomizeLayoutMenu;
 import xyz.fycz.myreader.ui.popmenu.ReadSettingMenu;
 import xyz.fycz.myreader.util.BrightUtil;
+import xyz.fycz.myreader.util.ChapterCacheGuard;
+import xyz.fycz.myreader.util.ChapterDownloadQueue;
 import xyz.fycz.myreader.util.ShareUtils;
 import xyz.fycz.myreader.util.SharedPreUtils;
 import xyz.fycz.myreader.util.SystemUtil;
@@ -163,9 +168,10 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
 
     private boolean loadFinish = false;
 
-    private int curCacheChapterNum = 0;//缓存章节数
+    //缓存章节数：下载线程自增、主线程读取，改为原子计数避免多线程丢失更新
+    private static final AtomicInteger curCacheChapterNum = new AtomicInteger(0);
 
-    private int needCacheChapterNum;//需要缓存的章节
+    private volatile int needCacheChapterNum;//需要缓存的章节
 
     private PageLoader mPageLoader;//页面加载器
 
@@ -175,7 +181,13 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
     private Runnable autoPageRunnable;//自动翻页
     private Runnable sendDownloadNotification;
 
-    private static boolean isStopDownload = true;
+    private static volatile boolean isStopDownload = true;
+
+    //当前正在执行的全书缓存任务线程，用于抢占时等待旧任务真正退出
+    private static volatile Thread downloadWorkerThread;
+
+    //缓存任务代号：每次发起新任务自增，旧任务发现代号变化后立即停止，避免两套循环并行
+    private static volatile int downloadGeneration;
 
     private int tempCacheChapterNum;
     private int tempCount;
@@ -184,6 +196,8 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
     private ReadCrawler mReadCrawler;
 
     private int downloadInterval = 150;
+
+    private boolean autoCacheAllTriggered = false;//自动缓存全部是否已触发（防止重复并发触发）
 
     private SourceExchangeDialog mSourceDialog;
     private AudioPlayerDialog mAudioPlayerDialog;
@@ -429,6 +443,7 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
                         mBookService.updateEntity(mBook);
                         loadFinish = true;
                         invalidateOptionsMenu();
+                        autoCacheAllIfNeeded();
                     }
 
                     @Override
@@ -695,15 +710,32 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
         super.finish();
     }
 
+    /**
+     * 退出阅读页时终止全书缓存任务：
+     * 置停止标记并推进任务代号，让 runBookCache 里的循环立刻退出，
+     * 同时中断仍在等待的缓存线程，避免线程泄漏。
+     */
+    private void stopBookCacheOnExit() {
+        isStopDownload = true;
+        downloadGeneration++;
+        Thread worker = downloadWorkerThread;
+        if (worker != null && worker != Thread.currentThread()) {
+            worker.interrupt();
+        }
+        downloadWorkerThread = null;
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         unregisterReceiver(mReceiver);
         mHandler.removeCallbacks(keepScreenRunnable);
         mHandler.removeCallbacks(autoPageRunnable);
-        /*mHandler.removeCallbacks(sendDownloadNotification);
+        // 恢复退出清理：移除进度通知回调、取消通知栏，并终止全书缓存线程，
+        // 否则退出阅读页后后台还在继续请求并写盘
+        mHandler.removeCallbacks(sendDownloadNotification);
         notificationUtil.cancelAll();
-        App.getApplication().shutdownThreadPool();*/
+        stopBookCacheOnExit();
         if (autoPage) {
             autoPageStop();
         }
@@ -1593,16 +1625,43 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
         });
     }
 
+    /**
+     * 开启「自动缓存全部」时，目录加载完成后自动缓存本书全部章节
+     */
+    private void autoCacheAllIfNeeded() {
+        if (autoCacheAllTriggered) {
+            return;
+        }
+        if (mBook == null || mChapters == null || mChapters.isEmpty()) {
+            return;
+        }
+        //本地书籍不做缓存
+        if ("本地书籍".equals(mBook.getType())) {
+            return;
+        }
+        if (!SysManager.getSetting().isAutoCacheAll()) {
+            return;
+        }
+        //无网络时不自动缓存，避免整本书逐章请求失败
+        if (!NetworkUtils.isNetWorkAvailable()) {
+            return;
+        }
+        autoCacheAllTriggered = true;
+        //延迟触发，避免与目录加载完成后的章节预加载互相抢占
+        final int total = mChapters.size();
+        mHandler.postDelayed(() -> addDownload(0, total, true), 1000);
+    }
+
     private void addDownload(int begin, int end) {
-        /*//取消之前下载
-        if (!isStopDownload) {
-            isStopDownload = true;
-            try {
-                Thread.sleep(200);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }*/
+        addDownload(begin, end, false);
+    }
+
+    private void addDownload(int begin, int end, boolean silent) {
+        //取消之前下载：先置停止标记让旧循环尽快退出，
+        //真正的等待放到工作线程里做，避免阻塞主线程
+        final Thread oldWorker = downloadWorkerThread;
+        isStopDownload = true;
+        final int generation = ++downloadGeneration;
         if (SysManager.getSetting().getCatheGap() != 0) {
             downloadInterval = SysManager.getSetting().getCatheGap();
         }
@@ -1610,58 +1669,124 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
         final int finalBegin = Math.max(0, begin);
         final int finalEnd = Math.min(end, mChapters.size());
         needCacheChapterNum = finalEnd - finalBegin;
-        curCacheChapterNum = 0;
-        isStopDownload = false;
+        curCacheChapterNum.set(0);
         ArrayList<Chapter> needDownloadChapters = new ArrayList<>();
         for (int i = finalBegin; i < finalEnd; i++) {
             final Chapter chapter = mChapters.get(i);
-            if (StringHelper.isEmpty(chapter.getContent())) {
+            //判重统一走 ChapterCacheGuard：内容为空、无缓存文件（含旧命名）、无在途请求才缓存，
+            //否则同一章节会被阅读页预取和本书缓存同时请求
+            if (ChapterCacheGuard.needDownload(chapter, mBook.getId())) {
                 needDownloadChapters.add(chapter);
             }
         }
         needCacheChapterNum = needDownloadChapters.size();
-        if (needCacheChapterNum > 0) {
+        if (needCacheChapterNum > 0 && !silent) {
             ToastUtils.showInfo("正在后台缓存书籍，具体进度可查看通知栏！");
             notificationUtil.requestNotificationPermissionDialog(ReadActivity.this);
             mHandler.postDelayed(sendDownloadNotification, 2 * downloadInterval);
         }
-        App.getApplication().newThread(() -> {
-            for (Chapter chapter : needDownloadChapters) {
-                if (StringHelper.isEmpty(chapter.getBookId())) {
-                    chapter.setId(mBook.getId());
-                }
-                BookApi.getChapterContent(chapter, mBook, mReadCrawler)
-                        .subscribeOn(Schedulers.from(App.getApplication().getmFixedThreadPool()))
-                        .subscribe(new MyObserver<String>() {
-                            @Override
-                            public void onSubscribe(Disposable d) {
-                                addDisposable(d);
-                            }
+        Thread worker = new Thread(
+                () -> runBookCache(needDownloadChapters, oldWorker, generation, silent), "book-cache-all");
+        worker.setPriority(Thread.NORM_PRIORITY - 1);
+        downloadWorkerThread = worker;
+        worker.start();
+    }
 
-                            @Override
-                            public void onNext(@NotNull String s) {
-                                downloadingChapter = chapter.getTitle();
-                                mChapterService.saveOrUpdateChapter(chapter, s);
-                                curCacheChapterNum++;
-                            }
-
-                            @Override
-                            public void onError(Throwable e) {
-                                curCacheChapterNum++;
-                                if (App.isDebug()) e.printStackTrace();
-                            }
-                        });
-                try {
-                    Thread.sleep(downloadInterval);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                if (isStopDownload) {
-                    break;
-                }
+    /**
+     * 全书缓存循环：逐章请求，且每一章都投递到与阅读页预取共享的
+     * 单线程队列上执行，保证任意时刻只有一个章节请求在跑
+     *
+     * @param chapters   待缓存章节
+     * @param oldWorker  上一次的缓存线程，需等待其真正退出后再开始
+     * @param generation 本次任务代号，与静态代号不一致说明已被更新的任务抢占
+     * @param silent     静默缓存（自动缓存全部），不弹提示
+     */
+    private void runBookCache(List<Chapter> chapters, Thread oldWorker, int generation, boolean silent) {
+        //等待旧的缓存任务真正退出，再复位停止标记，避免新旧两套循环并行
+        if (oldWorker != null && oldWorker != Thread.currentThread()) {
+            try {
+                oldWorker.join(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
-            if (curCacheChapterNum == needCacheChapterNum) {
-                ToastUtils.showInfo("《" + mBook.getName() + "》" + getString(R.string.download_already_all_tips));
+        }
+        //已被更新的任务抢占或用户已停止，不再复位标记
+        if (isFinishing() || generation != downloadGeneration) {
+            return;
+        }
+        isStopDownload = false;
+        final String fallbackBookId = mBook == null ? null : mBook.getId();
+        for (Chapter chapter : chapters) {
+            //代号变化说明已有更新的缓存任务接管，本循环必须退出，避免两套循环并行
+            if (isStopDownload || generation != downloadGeneration) {
+                break;
+            }
+            if (StringHelper.isEmpty(chapter.getBookId())) {
+                //此前误写为 setId，会把章节主键改成书号，导致后续 update 落到错误的行
+                chapter.setBookId(fallbackBookId);
+            }
+            //抢占在途标记：若阅读页预取已发起该章请求，则本轮跳过，避免重复请求
+            if (!ChapterCacheGuard.tryAcquire(chapter, fallbackBookId)) {
+                continue;
+            }
+            final CountDownLatch latch = new CountDownLatch(1);
+            BookApi.getChapterContent(chapter, mBook, mReadCrawler)
+                    .subscribeOn(ChapterDownloadQueue.scheduler())
+                    .subscribe(new MyObserver<String>() {
+                        @Override
+                        public void onSubscribe(Disposable d) {
+                            addDisposable(d);
+                        }
+
+                        @Override
+                        public void onNext(@NotNull String s) {
+                            //写盘与请求同在单线程队列中串行执行
+                            mChapterService.saveOrUpdateChapter(chapter, s);
+                            ChapterCacheGuard.release(chapter, fallbackBookId);
+                            onCacheChapterFinished(chapter.getTitle());
+                            latch.countDown();
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+                            //失败也要移除在途标记并计入进度，否则该章会被永久跳过、进度停在 99%
+                            ChapterCacheGuard.release(chapter, fallbackBookId);
+                            onCacheChapterFinished(chapter.getTitle());
+                            latch.countDown();
+                            if (App.isDebug()) e.printStackTrace();
+                        }
+                    });
+            try {
+                //等待本章真正结束（含超时兜底），保证逐章严格串行
+                latch.await(60, TimeUnit.SECONDS);
+                Thread.sleep(downloadInterval);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        if (!silent) {
+            final String bookName = mBook == null ? "" : mBook.getName();
+            final boolean finished = !isStopDownload
+                    && curCacheChapterNum.get() >= needCacheChapterNum;
+            mHandler.post(() -> {
+                if (finished && !isFinishing()) {
+                    ToastUtils.showInfo("《" + bookName + "》" + getString(R.string.download_already_all_tips));
+                }
+            });
+        }
+    }
+
+    /**
+     * 单个章节缓存结束：计数自增并把进度回调统一投递到主线程
+     */
+    private void onCacheChapterFinished(String chapterTitle) {
+        final int cur = curCacheChapterNum.incrementAndGet();
+        mHandler.post(() -> {
+            if (chapterTitle != null) {
+                downloadingChapter = chapterTitle;
+            }
+            if (App.isDebug()) {
+                Log.d("bookCache", "progress " + cur + "/" + needCacheChapterNum);
             }
         });
     }
@@ -1670,7 +1795,7 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
      * 发送通知
      */
     private void sendNotification() {
-        if (curCacheChapterNum == needCacheChapterNum) {
+        if (curCacheChapterNum.get() >= needCacheChapterNum) {
             notificationUtil.cancel(1001);
             return;
         } else {
@@ -1682,17 +1807,18 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
                     //点击通知后自动清除
                     .setAutoCancel(true)
                     .setContentTitle("正在下载：" + mBook.getName() +
-                            "[" + curCacheChapterNum + "/" + needCacheChapterNum + "]")
+                            "[" + curCacheChapterNum.get() + "/" + needCacheChapterNum + "]")
                     .setContentText(downloadingChapter == null ? "  " : downloadingChapter)
                     .addAction(R.drawable.ic_stop_black_24dp, "停止",
                             notificationUtil.getChancelPendingIntent(cancelDownloadReceiver.class))
                     .build();
             notificationUtil.notify(1001, notification);
         }
-        if (tempCacheChapterNum < curCacheChapterNum) {
+        final int cacheNum = curCacheChapterNum.get();
+        if (tempCacheChapterNum < cacheNum) {
             tempCount = 1500 / downloadInterval;
-            tempCacheChapterNum = curCacheChapterNum;
-        } else if (tempCacheChapterNum == curCacheChapterNum) {
+            tempCacheChapterNum = cacheNum;
+        } else if (tempCacheChapterNum == cacheNum) {
             tempCount--;
             if (tempCount == 0) {
                 notificationUtil.cancel(1001);
@@ -1708,6 +1834,8 @@ public class ReadActivity extends BaseActivity<ActivityReadBinding> implements C
             //todo 跳转之前要处理的逻辑
             if (NotificationClickReceiver.CANCEL_ACTION.equals(intent.getAction())) {
                 isStopDownload = true;
+                //同时作废当前任务代号，防止排队中的新任务把停止标记又复位成 false
+                downloadGeneration++;
             }
         }
     }

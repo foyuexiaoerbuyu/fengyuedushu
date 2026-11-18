@@ -267,6 +267,7 @@ public class MoreSettingActivity extends BaseActivity<ActivityMoreSettingBinding
         binding.scReadAloudVolumeTurnPage.setChecked(readAloudVolumeTurnPage);
         binding.scTripleClickJump.setChecked(isTripleClickJump);
         binding.scLongPressJump.setChecked(isLongPressJump);
+        binding.scAutoCacheAll.setChecked(mSetting.isAutoCacheAll());
     }
 
     @Override
@@ -583,6 +584,13 @@ public class MoreSettingActivity extends BaseActivity<ActivityMoreSettingBinding
         binding.rlMatchChapterSuitability.setOnClickListener(v -> binding.scMatchChapterSuitability.performClick());
         binding.rlResetScreen.setOnClickListener(v -> binding.scResetScreen.performClick());
         binding.rlCatheGap.setOnClickListener(v -> binding.scCatheGap.performClick());
+
+        binding.rlAutoCacheAll.setOnClickListener(v -> {
+            boolean autoCacheAll = !mSetting.isAutoCacheAll();
+            binding.scAutoCacheAll.setChecked(autoCacheAll);
+            mSetting.setAutoCacheAll(autoCacheAll);
+            SysManager.saveSetting(mSetting);
+        });
 
         binding.rlDeleteCathe.setOnClickListener(v -> {
             final Disposable[] catheDis = new Disposable[2];

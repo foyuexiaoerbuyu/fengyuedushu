@@ -180,8 +180,8 @@ public class ChapterService extends BaseService {
      * @param chapter
      */
     public void saveOrUpdateChapter(Chapter chapter, String content) {
-        chapter.setContent(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
-                + File.separator + chapter.getTitle() + FileUtils.SUFFIX_FY);
+        // 缓存文件名统一为「序号/ID + 标题」，避免同名章节互相覆盖
+        chapter.setContent(getChapterCacheNewFile(chapter).getAbsolutePath());
         if (!StringHelper.isEmpty(chapter.getId())) {
             updateEntity(chapter);
         } else {
@@ -208,16 +208,72 @@ public class ChapterService extends BaseService {
             return;
         }
 
-        File file = getChapterFileExisted(chapter);
+        // 写入一律用新命名；旧命名的缓存文件仍可被 getChapterFile 读到，不会失效
+        File file = getChapterCacheNewFile(chapter);
+        // 先写同目录临时文件，写完再改名替换目标文件，
+        // 避免并发请求读到被截断的半截缓存内容
+        File tmpFile = new File(file.getAbsolutePath() + ".tmp");
         BufferedWriter bw = null;
         try {
-            bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file)));
+            File dir = file.getParentFile();
+            if (dir != null && !dir.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                dir.mkdirs();
+            }
+            bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tmpFile)));
             bw.write(content);
             bw.flush();
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
             IOUtils.close(bw);
+        }
+
+        if (!tmpFile.exists() || tmpFile.length() <= 0) {
+            // 临时文件未写完，放弃本次落盘，避免生成残缺缓存
+            deleteQuietly(tmpFile);
+            return;
+        }
+
+        // renameTo 在目标已存在时可能失败，先清理旧文件
+        deleteQuietly(file);
+        if (!tmpFile.renameTo(file)) {
+            // 改名失败（文件被占用/跨分区）时降级为流拷贝，避免缓存丢失
+            copyQuietly(tmpFile, file);
+            deleteQuietly(tmpFile);
+        }
+    }
+
+    /**
+     * 静默删除文件
+     */
+    private void deleteQuietly(File file) {
+        if (file != null && file.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            file.delete();
+        }
+    }
+
+    /**
+     * 静默拷贝文件（renameTo 失败时的兜底）
+     */
+    private void copyQuietly(File src, File dest) {
+        InputStream in = null;
+        OutputStream out = null;
+        try {
+            in = new FileInputStream(src);
+            out = new FileOutputStream(dest);
+            byte[] buffer = new byte[8192];
+            int length;
+            while ((length = in.read(buffer)) != -1) {
+                out.write(buffer, 0, length);
+            }
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            IOUtils.close(in);
+            IOUtils.close(out);
         }
     }
 
@@ -227,8 +283,17 @@ public class ChapterService extends BaseService {
      * @param chapter
      */
     public void deleteChapterCacheFile(Chapter chapter) {
-        File file = getChapterFile(chapter);
-        if (file.exists()) file.delete();
+        // 新旧两种命名可能同时存在，删除时必须一并清掉，否则「重新加载」会读到残留的旧缓存
+        File file = getChapterCacheNewFile(chapter);
+        if (file.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            file.delete();
+        }
+        File legacyFile = getChapterCacheLegacyFile(chapter);
+        if (!legacyFile.equals(file) && legacyFile.exists()) {
+            //noinspection ResultOfMethodCallIgnored
+            legacyFile.delete();
+        }
     }
 
     /**
@@ -353,24 +418,68 @@ public class ChapterService extends BaseService {
                 + File.separator + fileName + FileUtils.SUFFIX_FY);
     }
 
+    /**
+     * 章节缓存文件名（不含扩展名）
+     * <p>
+     * 新命名 = 「序号 + 、 + 标题」；序号异常（&lt; 0）时退化为章节ID；
+     * 两者都拿不到时退化为纯标题，即旧版本命名 —— 保证任何章节都能落到唯一文件名。
+     * 旧版本只用标题命名，同书内「第一章」「序章」这类同名标题会互相覆盖，
+     * 这里加上序号前缀彻底消除覆盖。
+     */
+    public static String getChapterCacheName(Chapter chapter) {
+        if (chapter == null) {
+            return "";
+        }
+        String title = chapter.getTitle() == null ? "" : chapter.getTitle();
+        String prefix = null;
+        if (chapter.getNumber() >= 0) {
+            prefix = String.valueOf(chapter.getNumber());
+        } else if (!StringHelper.isEmpty(chapter.getId())) {
+            prefix = chapter.getId();
+        }
+        if (StringHelper.isEmpty(prefix)) {
+            return title;
+        }
+        return prefix + "、" + title;
+    }
+
+    /**
+     * 新命名缓存文件（写入位置，不判断是否存在）
+     */
+    public static File getChapterCacheNewFile(Chapter chapter) {
+        return new File(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
+                + File.separator + getChapterCacheName(chapter) + FileUtils.SUFFIX_FY);
+    }
+
+    /**
+     * 旧版本缓存文件（只含标题的命名），仅用于兼容读取
+     */
+    public static File getChapterCacheLegacyFile(Chapter chapter) {
+        return new File(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
+                + File.separator + chapter.getTitle() + FileUtils.SUFFIX_FY);
+    }
+
+    /**
+     * 获取章节缓存文件：先查新命名，再回退旧命名，两个都不存在时返回新命名（写入位置）。
+     * 这样升级后旧缓存仍然命中，不会因为改名让既有缓存全部失效。
+     */
     public static File getChapterFile(Chapter chapter) {
-        File file = new File(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
-                + File.separator + chapter.getNumber() + "、" + chapter.getTitle() + FileUtils.SUFFIX_FY);
-        if (!file.exists()) {
-            file = new File(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
-                    + File.separator + chapter.getTitle() + FileUtils.SUFFIX_FY);
+        File file = getChapterCacheNewFile(chapter);
+        if (file.exists() && file.length() > 0) {
+            return file;
+        }
+        File legacyFile = getChapterCacheLegacyFile(chapter);
+        if (!legacyFile.equals(file) && legacyFile.exists() && legacyFile.length() > 0) {
+            return legacyFile;
         }
         return file;
     }
 
+    /**
+     * 保留旧方法名，语义与 {@link #getChapterFile(Chapter)} 一致
+     */
     public static File getChapterFileExisted(Chapter chapter) {
-        File file = new File(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
-                + File.separator + chapter.getTitle() + FileUtils.SUFFIX_FY);
-        if (!file.exists()) {
-            file = FileUtils.getFile(APPCONST.BOOK_CACHE_PATH + chapter.getBookId()
-                    + File.separator + chapter.getNumber() + "、" + chapter.getTitle() + FileUtils.SUFFIX_FY);
-        }
-        return file;
+        return getChapterFile(chapter);
     }
 
 }
